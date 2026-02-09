@@ -110,6 +110,8 @@ npm run build
 
 ## 🚀 Деплой
 
+**GitHub + Vercel:** см. [DEPLOY.md](/DEPLOY.md) — пошаговая инструкция по публикации на GitHub и раскатке на Vercel.
+
 ### Текущий (Figma Make)
 ```
 https://piece-tusk-34240901.figma.site
