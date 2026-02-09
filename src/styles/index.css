@@ -1,6 +1,16 @@
 @import './tailwind.css';
 @import './theme.css';
 
+/* Фон всей страницы чёрный, без серых просветов */
+html,
+body {
+  background: #000;
+}
+#root {
+  min-height: 100%;
+  background: #000;
+}
+
 /* Performance optimizations for mobile */
 * {
   -webkit-font-smoothing: antialiased;

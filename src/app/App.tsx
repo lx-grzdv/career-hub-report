@@ -1,12 +1,27 @@
 import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell } from 'recharts';
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
-import { HelpCircle, TrendingUp } from 'lucide-react';
+import {
+  HelpCircle,
+  TrendingUp,
+  Users,
+  Lightbulb,
+  Clock,
+  PackageOpen,
+  Scale,
+  GitBranch,
+  Gift,
+  Sparkles,
+  Copy,
+} from 'lucide-react';
 import { useRef, useState, useEffect, memo, useMemo } from 'react';
 import { PerformanceOptimizer } from './components/PerformanceOptimizer';
 import { PerformanceMonitor } from './components/PerformanceMonitor';
 import { LazySection } from './components/LazySection';
 import { LoadingScreen } from './components/LoadingScreen';
+import { snapshotMembers, SNAPSHOT_LABEL, SNAPSHOT_TIME, REPORT_START_DATETIME, REPORT_START_LABEL, SNAPSHOT_DATETIME, SNAPSHOT_WAVE_NUMBER } from '../data/snapshot';
+import { BASE_CHANNEL_DATA } from '../data/channelBase';
+import { CONCLUSION, CONCLUSION_GENERATED_AT } from '../data/conclusion';
 
 // Performance optimizations for mobile
 const isMobile = typeof window !== 'undefined' 
@@ -94,6 +109,39 @@ const TermWithTooltip = ({ term, definition }: { term: string; definition: strin
     </div>
   );
 };
+
+const InsightCard = ({
+  idx,
+  icon: Icon,
+  meta,
+  title,
+  children,
+}: {
+  idx: number;
+  icon: React.ComponentType<{ className?: string }>;
+  meta: string;
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ delay: Math.min(idx * 0.1, 0.6) }}
+    className="bg-black p-8 md:p-12 flex flex-col h-full min-h-0"
+  >
+    <div className="flex flex-col items-center text-center mb-4 min-h-[5.5rem] flex-shrink-0 md:flex-row md:items-start md:text-left md:justify-between md:gap-3">
+      <div className="flex flex-col items-center md:items-start flex-1 min-w-0">
+        <div className="text-xs text-white/40 uppercase tracking-widest mb-1">{meta}</div>
+        <h4 className="text-xl md:text-2xl font-light leading-tight">{title}</h4>
+      </div>
+      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center text-white/70 mt-2 md:mt-0">
+        <Icon className="w-5 h-5" />
+      </div>
+    </div>
+    <div className="flex-1 min-h-0">{children}</div>
+  </motion.div>
+);
 
 const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; value: number }[]; channel: string; onClose: () => void }) => {
   const maxValue = useMemo(() => Math.max(...data.map(d => d.value)), [data]);
@@ -236,8 +284,8 @@ const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; val
                   {i === 0 && 'База'}
                   {i === 1 && 'Волна 1'}
                   {i === 2 && 'Волна 2'}
-                  {i === 3 && 'Волна 3'}
-                  {i === 4 && 'Финал'}
+                  {i === 3 && `Волна ${SNAPSHOT_WAVE_NUMBER}`}
+                  {i === 4 && `Волна ${SNAPSHOT_WAVE_NUMBER} (финал)`}
                 </div>
                 <div className="text-sm text-white/60 mb-2">{d.time}</div>
                 <div className="text-2xl md:text-3xl font-light">{d.value}</div>
@@ -267,6 +315,12 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
   
   const isMobile = windowWidth < 768;
   const isSmallMobile = windowWidth < 400;
+
+  /** Данные для графиков: всегда от большего к меньшему по приросту. */
+  const sortedByTotal = useMemo(
+    () => [...channelData].sort((a, b) => b.total - a.total),
+    [channelData]
+  );
 
   return (
     <>
@@ -342,7 +396,7 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
               <div className="min-w-[320px]">
                 <ResponsiveContainer width="100%" height={isSmallMobile ? 350 : isMobile ? 400 : 500}>
               <BarChart 
-                data={channelData.map(d => ({
+                data={sortedByTotal.map(d => ({
                   name: d.channel.replace('@', ''),
                   total: d.total,
                   type: d.type,
@@ -432,7 +486,7 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
                   animationDuration={isMobile ? 300 : 800}
                   isAnimationActive={!prefersReducedMotion}
                 >
-                  {channelData.map((entry, index) => (
+                  {sortedByTotal.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={
@@ -472,7 +526,7 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
               <div className="min-w-[320px]">
                 <ResponsiveContainer width="100%" height={isSmallMobile ? 350 : isMobile ? 400 : 500}>
               <BarChart 
-                data={channelData.map(d => ({
+                data={sortedByTotal.map(d => ({
                   name: d.channel.replace('@', ''),
                   base: d.base,
                   growth: d.total,
@@ -523,7 +577,7 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
                   animationDuration={isMobile ? 300 : 800}
                   isAnimationActive={!prefersReducedMotion}
                 >
-                  {channelData.map((entry, index) => (
+                  {sortedByTotal.map((entry, index) => (
                     <Cell
                       key={`growth-${index}`}
                       fill={
@@ -545,7 +599,217 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
   );
 };
 
-const TableRow = memo(({ row, idx }: { row: any; idx: number }) => {
+const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram-каналов внутри папки. Сгенерируй инсайты и гипотезы для ОДНОГО канала на основе числовых срезов подписчиков.
+
+ВХОД:
+- TARGET_CHANNEL: <handle> (например "@tooltipp")
+- BASELINE_DATA: данные по каналам из src/data/channelBase.ts
+- SNAPSHOT_DATA: последний срез из src/data/snapshot.ts
+- OPTIONAL_SNAPSHOTS: если в проекте есть дополнительные срезы (например 11:30, 15:22, 18:06, 18:50, 23:56), используй их. Если нет — работай только с тем, что есть.
+- FOLDER_CHANNELS: список 12 каналов папки (включая TARGET_CHANNEL)
+
+ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:
+1) Никаких определений терминов. Только выводы и гипотезы, подкреплённые числами.
+2) Каждый инсайт должен содержать минимум 2 конкретные цифры (например "342→447 = +105", "+50 за 30 минут").
+3) Не выдумывать отсутствующие точки. Если нет 11:30/15:22 — явно скажи, какие окна невозможно посчитать.
+4) Сравни TARGET_CHANNEL с остальными каналами папки: место в рейтинге по итоговому приросту; отличия профиля роста: "ранний импульс" vs "хвост"; наличие late-tail.
+5) Гипотезы должны быть привязаны к данным и паттернам (низкий/high overlap, витрина, донорский/бенефициарный эффект, тайминг).
+6) Структура ответа фиксирована (см. ниже). Пиши на русском, коротко и по делу.
+
+ЧТО НУЖНО ПОСЧИТАТЬ (если есть данные): Start = 11:00 (base), Wave1 = Δ(11:00→11:30), Wave2 = Δ(11:30→15:30), Total = Δ(11:00→latest), LateTail = Δ(18:06→latest).
+
+ФОРМАТ ВЫХОДА (строго):
+A) TL;DR (1 предложение)
+B) Метрики (4–6 строк: "показатель: число → число = Δ")
+C) Инсайты (4–6 буллетов с цифрами)
+D) Гипотезы (3–5 буллетов по паттернам из данных)
+E) Что делать (2–4 практических шага для автора канала)
+F) Контекст сравнения (место в рейтинге по Total, кто выше/ниже)
+
+ДАННЫЕ ДЛЯ ОБРАБОТКИ:
+TARGET_CHANNEL:
+<<<TARGET_CHANNEL>>>
+
+FOLDER_CHANNELS:
+<<<FOLDER_CHANNELS>>>
+
+BASELINE_DATA:
+<<<BASELINE_DATA>>>
+
+SNAPSHOT_DATA:
+<<<SNAPSHOT_DATA>>>
+
+OPTIONAL_SNAPSHOTS (11:30, 15:30, 18:06 по каналам):
+<<<OPTIONAL_SNAPSHOTS>>>
+`;
+
+function buildChannelInsightPrompt(
+  targetRow: { channel: string; base: number; wave1: number; wave2: number; current: number; final: number; growth1: number; growth2: number; growth3: number; total: number },
+  allChannelData: typeof BASE_CHANNEL_DATA extends (infer R)[] ? (R & { final?: number; growth3?: number; total?: number })[] : never,
+  snapshotLabel: string
+): string {
+  const folderChannels = allChannelData.map((r) => r.channel).join(', ');
+  const baselineData = allChannelData
+    .map((r) => `${r.channel}: base=${r.base}, 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`)
+    .join('\n');
+  const snapshotData = `${snapshotLabel}\n` + allChannelData.map((r) => `${r.channel}: ${(r as { final?: number }).final ?? r.current}`).join('\n');
+  const optionalSnapshots = allChannelData
+    .map((r) => `${r.channel}: 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`)
+    .join('\n');
+  return CHANNEL_INSIGHT_PROMPT.replace('<<<TARGET_CHANNEL>>>', targetRow.channel)
+    .replace('<<<FOLDER_CHANNELS>>>', folderChannels)
+    .replace('<<<BASELINE_DATA>>>', baselineData)
+    .replace('<<<SNAPSHOT_DATA>>>', snapshotData)
+    .replace('<<<OPTIONAL_SNAPSHOTS>>>', optionalSnapshots);
+}
+
+function parseChannelInsightResponse(text: string): { section: string; content: string }[] {
+  const out: { section: string; content: string }[] = [];
+  const re = /(?:^|\n)\s*(A\)|B\)|C\)|D\)|E\)|F\)|TL;DR|Метрики|Инсайты|Гипотезы|Что делать|Контекст сравнения)\s*[:\s]*/gi;
+  let prevEnd = 0;
+  let prevTitle = '';
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (prevTitle) out.push({ section: prevTitle, content: text.slice(prevEnd, m.index).trim() });
+    prevTitle = m[1];
+    prevEnd = m.index + m[0].length;
+  }
+  if (prevTitle) out.push({ section: prevTitle, content: text.slice(prevEnd).trim() });
+  return out.length > 0 ? out : [{ section: 'Ответ', content: text.trim() }];
+}
+
+const InsightModal = ({
+  channel,
+  promptText,
+  onClose,
+}: {
+  channel: string;
+  promptText: string;
+  onClose: () => void;
+}) => {
+  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setContent(null);
+    fetch('/api/generate-channel-insight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText }),
+    })
+      .then(async (res) => {
+        const text = await res.text();
+        if (!res.ok) {
+          try {
+            const d = JSON.parse(text);
+            throw new Error(d.error || res.statusText);
+          } catch (_) {
+            throw new Error(text || res.statusText || 'Ошибка сервера');
+          }
+        }
+        try {
+          return text ? JSON.parse(text) : {};
+        } catch {
+          return { content: text };
+        }
+      })
+      .then((data) => {
+        if (!cancelled && data?.content) setContent(data.content);
+        else if (!cancelled && !data?.content) setError('Пустой ответ от сервера');
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message || 'Ошибка запроса');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [channel, promptText]);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(promptText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const parsed = useMemo(() => (content ? parseChannelInsightResponse(content) : []), [content]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative bg-black border border-white/20 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/20 flex-shrink-0">
+          <h3 className="text-xl font-light">Инсайты по каналу {channel}</h3>
+          <button type="button" onClick={onClose} className="text-white/60 hover:text-white transition-colors p-1">
+            ✕
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1 min-h-0 space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center gap-3 py-12 text-white/60">
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                className="inline-block w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+              />
+              <span>Генерация инсайтов…</span>
+            </div>
+          )}
+          {error && !loading && (
+            <div className="space-y-3">
+              <p className="text-sm text-amber-400/90">{error}</p>
+              <p className="text-xs text-white/50">
+                Запустите <code className="text-white/70">npm run dev</code> — приложение и API стартуют вместе. В .env должен быть <code className="text-white/70">OPENAI_API_KEY</code>. Затем нажмите ✨ снова.
+              </p>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white border border-white/20 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {copied ? 'Скопировано' : 'Скопировать промпт (вставить в ChatGPT)'}
+              </button>
+            </div>
+          )}
+          {content && !loading && (
+            <div className="space-y-3">
+              {parsed.length > 0 ? (
+                parsed.map(({ section, content: sectionContent }) => (
+                  <div key={section}>
+                    <div className="text-xs text-white/40 uppercase tracking-wider mb-1">{section}</div>
+                    <div className="text-sm text-white/80 whitespace-pre-wrap">{sectionContent}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-white/80 whitespace-pre-wrap">{content}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number; onGenerateInsight?: (row: any) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   const chartData = useMemo(() => [
@@ -553,7 +817,7 @@ const TableRow = memo(({ row, idx }: { row: any; idx: number }) => {
     { time: '11:30', value: row.wave1 },
     { time: '15:30', value: row.wave2 },
     { time: '18:06', value: row.current },
-    { time: '18:50', value: row.final },
+    { time: SNAPSHOT_TIME, value: row.final },
   ], [row.base, row.wave1, row.wave2, row.current, row.final]);
 
   // Simplified animations on mobile
@@ -580,9 +844,24 @@ const TableRow = memo(({ row, idx }: { row: any; idx: number }) => {
                 e.stopPropagation();
                 setIsOpen(true);
               }}
+              title="График роста"
             >
               <TrendingUp className="w-4 h-4" />
             </motion.button>
+            {onGenerateInsight && (
+              <motion.button
+                whileHover={!isMobile ? { scale: 1.1 } : undefined}
+                whileTap={{ scale: 0.95 }}
+                className="text-white/40 hover:text-amber-400/90 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerateInsight(row);
+                }}
+                title="Сгенерировать инсайты по каналу"
+              >
+                <Sparkles className="w-4 h-4" />
+              </motion.button>
+            )}
           </div>
         </td>
         <td className="py-4 px-4 text-right text-white/60">{row.base}</td>
@@ -614,6 +893,7 @@ export default function App() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 768);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+  const [insightModalRow, setInsightModalRow] = useState<{ channel: string; base: number; wave1: number; wave2: number; current: number; final: number; growth1: number; growth2: number; growth3: number; total: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
   
@@ -706,28 +986,128 @@ User-Agent: ${navigator.userAgent}
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [1, 0.5, 0]);
 
-  const channelData = [
-    { channel: '@visuaaaals', base: 580, wave1: 596, wave2: 672, current: 673, final: 681, growth1: 16, growth2: 76, growth3: 8, total: 101, type: 'beneficiary' },
-    { channel: '@tooltipp', base: 342, wave1: 392, wave2: 429, current: 433, final: 440, growth1: 50, growth2: 37, growth3: 7, total: 98, type: 'beneficiary' },
-    { channel: '@nix_ux_view', base: 473, wave1: 523, wave2: 557, current: 562, final: 569, growth1: 50, growth2: 34, growth3: 7, total: 96, type: 'beneficiary' },
-    { channel: '@DesignDictatorship', base: 734, wave1: 782, wave2: 815, current: 823, final: 825, growth1: 48, growth2: 33, growth3: 2, total: 91, type: 'donor' },
-    { channel: '@prodtomorrow', base: 520, wave1: 568, wave2: 598, current: 605, final: 609, growth1: 48, growth2: 30, growth3: 4, total: 89, type: 'stable' },
-    { channel: '@sshultse', base: 566, wave1: 604, wave2: 638, current: 648, final: 653, growth1: 38, growth2: 34, growth3: 5, total: 87, type: 'stable' },
-    { channel: '@lx_grzdv_links', base: 650, wave1: 694, wave2: 730, current: 732, final: 737, growth1: 44, growth2: 36, growth3: 5, total: 87, type: 'stable' },
-    { channel: '@kuntsevich_design', base: 828, wave1: 870, wave2: 891, current: 903, final: 911, growth1: 42, growth2: 21, growth3: 8, total: 83, type: 'donor' },
-    { channel: '@pxPerson_produced', base: 366, wave1: 401, wave2: 435, current: 435, final: 445, growth1: 35, growth2: 34, growth3: 10, total: 79, type: 'stable' },
-    { channel: '@yuliapohilko', base: 510, wave1: 521, wave2: 569, current: 585, final: 589, growth1: 11, growth2: 48, growth3: 4, total: 79, type: 'beneficiary' },
-    { channel: '@dsgn_thinking', base: 678, wave1: 721, wave2: 743, current: 754, final: 756, growth1: 43, growth2: 22, growth3: 2, total: 78, type: 'donor' },
-    { channel: '@trueredorescue', base: 550, wave1: 587, wave2: 620, current: 626, final: 626, growth1: 37, growth2: 33, growth3: 0, total: 76, type: 'stable' },
-  ];
+  /** Финал и прирост: из загруженного скриншота или из src/data/snapshot.ts. */
+  const activeSnapshot = snapshotMembers;
+  const channelData = useMemo(() => {
+    return BASE_CHANNEL_DATA.map((row) => {
+      const username = row.channel.replace('@', '');
+      const snapshotFinal = activeSnapshot[username];
+      if (snapshotFinal == null) return row;
+      const growth3 = snapshotFinal - row.current;
+      const total = snapshotFinal - row.base;
+      return {
+        ...row,
+        final: snapshotFinal,
+        growth3,
+        total,
+      };
+    });
+  }, [activeSnapshot]);
 
   const chartData = useMemo(() => channelData.map(d => ({
     name: d.channel.replace('@', ''),
     'Волна 1': d.growth1,
     'Волна 2': d.growth2,
-    'Волна 3': d.growth3,
+    [`Волна ${SNAPSHOT_WAVE_NUMBER}`]: d.growth3,
     'Итого': d.total,
-  })), []);
+  })), [channelData]);
+
+  /** Средний прирост по каналам (округлённо). */
+  const averageGrowth = useMemo(() => {
+    if (!channelData.length) return 0;
+    const sum = channelData.reduce((s, r) => s + r.total, 0);
+    return Math.round(sum / channelData.length);
+  }, [channelData]);
+
+  /** Длительность наблюдения: от начала отчёта до снапшота (например "7ч" или "1д 13ч"). */
+  const observationLabel = useMemo(() => {
+    const start = new Date(REPORT_START_DATETIME).getTime();
+    const end = new Date(SNAPSHOT_DATETIME).getTime();
+    const hours = (end - start) / (1000 * 60 * 60);
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const h = Math.round(hours % 24);
+      return h > 0 ? `${days}д ${h}ч` : `${days}д`;
+    }
+    return `${Math.round(hours)}ч`;
+  }, []);
+
+  /** Топ-4 канала по приросту (актуальные данные из снапшота). */
+  const growthLeaders = useMemo(() => {
+    return [...channelData]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4);
+  }, [channelData]);
+
+  /** Данные для нарративных инсайтов: доноры, бенефициары, лидеры волн, диапазоны. */
+  const insightData = useMemo(() => {
+    const donors = channelData.filter((r) => r.type === 'donor');
+    const beneficiaries = channelData.filter((r) => r.type === 'beneficiary');
+    const byTotal = [...channelData].sort((a, b) => b.total - a.total);
+    const byWave2 = [...channelData].sort((a, b) => b.growth2 - a.growth2);
+    const byWave3 = [...channelData].sort((a, b) => (b.growth3 ?? 0) - (a.growth3 ?? 0));
+    const totalMin = Math.min(...channelData.map((r) => r.total));
+    const totalMax = Math.max(...channelData.map((r) => r.total));
+    const wave2Min = Math.min(...channelData.map((r) => r.growth2));
+    const wave2Max = Math.max(...channelData.map((r) => r.growth2));
+    const wave3Min = Math.min(...channelData.map((r) => r.growth3 ?? 0));
+    const wave3Max = Math.max(...channelData.map((r) => r.growth3 ?? 0));
+    return {
+      donors: donors.map((r) => ({ channel: r.channel, growth1: r.growth1, growth2: r.growth2, growth3: r.growth3 ?? 0, total: r.total })),
+      beneficiaries: beneficiaries.map((r) => ({ channel: r.channel, base: r.base, final: r.final, total: r.total })),
+      topByTotal: byTotal.slice(0, 4).map((r) => ({ channel: r.channel, total: r.total })),
+      bottomByTotal: byTotal.slice(-3).map((r) => ({ channel: r.channel, total: r.total })),
+      wave2Leader: byWave2[0] ? { channel: byWave2[0].channel, growth2: byWave2[0].growth2 } : null,
+      wave3Leaders: byWave3.slice(0, 5).filter((r) => (r.growth3 ?? 0) > 0).map((r) => ({ channel: r.channel, growth3: r.growth3 ?? 0 })),
+      totalRange: `${totalMin}…+${totalMax}`,
+      wave2Range: `+${wave2Min}…+${wave2Max}`,
+      wave3Range: `+${wave3Min}…+${wave3Max}`,
+      donorWave3Sample: donors.slice(0, 3).map((r) => `${r.channel} +${r.growth3 ?? 0}`).join(', '),
+      othersWave3Sample: byWave3.slice(0, 5).map((r) => `${r.channel.replace('@', '')} +${r.growth3 ?? 0}`).join(', '),
+    };
+  }, [channelData]);
+
+  /** Таблица: всегда сортировка по приросту (Итого) от большего к меньшему. */
+  const tableDataSorted = useMemo(
+    () => [...channelData].sort((a, b) => b.total - a.total),
+    [channelData]
+  );
+
+  /** Категории для волны среза (growth3): как у волн 1 и 2 — термин, определение, строка каналов. */
+  const wave3Categories = useMemo(() => {
+    const sorted = [...channelData]
+      .filter((r) => r.growth3 > 0)
+      .sort((a, b) => b.growth3 - a.growth3);
+    if (sorted.length === 0) return [];
+    const maxG = sorted[0].growth3;
+    const top = sorted.filter((r) => r.growth3 === maxG);
+    const mid = sorted.filter((r) => r.growth3 < maxG && r.growth3 >= maxG - 4);
+    const rest = sorted.filter((r) => r.growth3 < maxG - 4);
+    const fmt = (arr: typeof sorted) => arr.map((r) => `${r.channel} (+${r.growth3})`).join(', ');
+    const categories: { term: string; definition: string; line: string }[] = [];
+    if (top.length) {
+      categories.push({
+        term: 'Лидеры волны',
+        definition: 'Максимальный прирост в данном срезе. Показатель наивысшей динамики в период до снапшота.',
+        line: fmt(top),
+      });
+    }
+    if (mid.length) {
+      categories.push({
+        term: 'Сильный прирост',
+        definition: 'Прирост выше среднего в срезе. Стабильная динамика в период наблюдения.',
+        line: fmt(mid),
+      });
+    }
+    if (rest.length) {
+      categories.push({
+        term: 'Умеренный прирост',
+        definition: 'Положительный прирост в срезе. Рост продолжается после второй волны.',
+        line: fmt(rest),
+      });
+    }
+    return categories;
+  }, [channelData]);
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -800,7 +1180,7 @@ User-Agent: ${navigator.userAgent}
             <h1 className="text-base md:text-xl tracking-[0.2em] font-light">
               CAREER HUB
             </h1>
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
               {/* Open in Browser button for Telegram */}
               {typeof navigator !== 'undefined' && navigator.userAgent.includes('Telegram') && (
                 <button
@@ -901,6 +1281,9 @@ User-Agent: ${navigator.userAgent}
               <p className="text-xs md:text-sm text-white/60 mt-4">
                 8 февраля 2026 • 11:00–18:06
               </p>
+              <p className="text-xs md:text-sm text-white/50 mt-2">
+                Актуальные подписчики: {SNAPSHOT_LABEL}
+              </p>
             </motion.div>
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -944,7 +1327,7 @@ User-Agent: ${navigator.userAgent}
               transition={{ delay: 0.2 }}
               className="p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/20"
             >
-              <div className="text-6xl md:text-8xl font-light mb-4">+81</div>
+              <div className="text-6xl md:text-8xl font-light mb-4">+{averageGrowth}</div>
               <div className="text-base md:text-xl tracking-wider">СРЕДНИЙ ПРИРОСТ</div>
               <div className="text-xs md:text-sm text-white/60 mt-2">Подписчиков за период</div>
             </motion.div>
@@ -955,9 +1338,10 @@ User-Agent: ${navigator.userAgent}
               transition={{ delay: 0.4 }}
               className="p-8 md:p-12"
             >
-              <div className="text-6xl md:text-8xl font-light mb-4">7ч</div>
+              <div className="text-6xl md:text-8xl font-light mb-4">{observationLabel}</div>
               <div className="text-base md:text-xl tracking-wider">НАБЛЮДЕНИЕ</div>
               <div className="text-xs md:text-sm text-white/60 mt-2">Временной период</div>
+              <div className="text-xs text-white/50 mt-1">с {REPORT_START_LABEL}</div>
             </motion.div>
           </div>
         </section>
@@ -974,8 +1358,8 @@ User-Agent: ${navigator.userAgent}
               ЛИДЕРЫ РОСТА
             </motion.h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/20">
-              {channelData.slice(0, 4).map((channel, idx) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black">
+              {growthLeaders.map((channel, idx) => (
                 <motion.div
                   key={channel.channel}
                   initial={{ opacity: 0, y: 60 }}
@@ -1013,7 +1397,7 @@ User-Agent: ${navigator.userAgent}
                     </div>
                     <div className="flex justify-between border-b border-white/10 pb-2">
                       <span>Сейчас</span>
-                      <span className="text-white">{channel.current}</span>
+                      <span className="text-white">{channel.final}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -1024,14 +1408,14 @@ User-Agent: ${navigator.userAgent}
 
         {/* Wave Analysis */}
         <section className="border-b border-white/20">
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="p-6 md:p-12 lg:p-20 border-b lg:border-b-0 lg:border-r border-white/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-black">
+            <div className="p-6 md:p-12 lg:p-20 bg-black">
               <motion.div
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ПЕРВАЯ ВОЛНА</h3>
+                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 1</h3>
                 <p className="text-white/60 mb-6">11:00 → 11:30</p>
                 <div className="space-y-6">
                   <div>
@@ -1059,13 +1443,13 @@ User-Agent: ${navigator.userAgent}
               </motion.div>
             </div>
 
-            <div className="p-6 md:p-12 lg:p-20">
+            <div className="p-6 md:p-12 lg:p-20 bg-black">
               <motion.div
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВТОРАЯ ВОЛНА</h3>
+                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 2</h3>
                 <p className="text-white/60 mb-6">11:30 → ~15:30</p>
                 <div className="space-y-6">
                   <div>
@@ -1089,6 +1473,25 @@ User-Agent: ${navigator.userAgent}
                     />
                     <div className="text-xl">@tooltipp, @lx_grzdv_links, @sshultse (+34…+37)</div>
                   </div>
+                </div>
+              </motion.div>
+            </div>
+
+            <div className="p-6 md:p-12 lg:p-20 bg-black">
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+              >
+                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА {SNAPSHOT_WAVE_NUMBER}</h3>
+                <p className="text-white/60 mb-6">15:30 → {SNAPSHOT_TIME}</p>
+                <div className="space-y-6">
+                  {wave3Categories.map((cat) => (
+                    <div key={cat.term}>
+                      <TermWithTooltip term={cat.term} definition={cat.definition} />
+                      <div className="text-xl">{cat.line}</div>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             </div>
@@ -1147,105 +1550,145 @@ User-Agent: ${navigator.userAgent}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light mb-16 tracking-tight"
+              className="text-4xl md:text-6xl font-light tracking-tight mb-16"
             >
               КЛЮЧЕВЫЕ ИНСАЙТЫ
             </motion.h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/20">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="bg-black p-8 md:p-12"
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch">
+              {/* 1. Доноры экосистемы */}
+              <InsightCard
+                idx={0}
+                icon={Users}
+                meta="Высокий Overlap"
+                title="ДОНОРЫ ЭКОСИСТЕМЫ"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Высокий Overlap</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">ДОНОРЫ ЭКОСИСТЕМЫ</h4>
-                <p className="text-white/80 mb-4">@DesignDictatorship, @kuntsevich_design, @dsgn_thinking</p>
-                <p className="text-sm text-white/60 mb-4">
-                  Сильные каналы с устоявшейся аудиторией, работают как доноры трафика для других каналов папки.
+                <p className="text-sm text-white/70 mb-3">
+                  У каналов-доноров ({insightData.donors.map((d) => d.channel).join(', ')}) в волне {SNAPSHOT_WAVE_NUMBER} прирост небольшой: {insightData.donorWave3Sample}.
                 </p>
-                <div className="border-t border-white/10 pt-4 mt-4">
-                  <p className="text-sm text-white/70">
-                    Даже после собственного поста @DesignDictatorship показал минимальный direct-рост, но обеспечил заметный перекрёстн��й рост другим каналам.
-                  </p>
-                </div>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>В той же волне сильнее выросли другие: {insightData.othersWave3Sample}</li>
+                  <li>Гипотеза: аудитория доноров насыщена «ядром», папка добирает менее пересекаемые каналы</li>
+                </ul>
+              </InsightCard>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="bg-black p-8 md:p-12"
+              {/* 2. Главные бенефициары */}
+              <InsightCard
+                idx={1}
+                icon={TrendingUp}
+                meta="Низкий Overlap"
+                title="ГЛАВНЫЕ БЕНЕФИЦИАРЫ"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Низкий Overlap</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">ГЛАВНЫЕ БЕНЕФИЦИАРЫ</h4>
-                <p className="text-white/80 mb-4">@visuaaaals, @tooltipp, @nix_ux_view, @yuliapohilko</p>
-                <p className="text-sm text-white/60">
-                  Максимальный рост за счёт привлечения новой аудитории. @visuaaaals — абсолютный лидер второй волны (+76).
+                <p className="text-sm text-white/70 mb-3">
+                  Итоговый рост с {REPORT_START_LABEL} до {SNAPSHOT_LABEL} — кто сильнее всего добирал новую аудиторию:
                 </p>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  {insightData.topByTotal.map((r) => (
+                    <li key={r.channel}><strong className="text-white/80">{r.channel} +{r.total}</strong></li>
+                  ))}
+                </ul>
+                <p className="text-sm text-white/60">
+                  Гипотеза: у этих каналов ниже пересечение с ядром и/или выше конверсия «витрины».
+                </p>
+              </InsightCard>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="bg-black p-8 md:p-12"
+              {/* 3. Низкий прирост ≠ слабый канал */}
+              <InsightCard
+                idx={2}
+                icon={Lightbulb}
+                meta="Ключевой инсайт"
+                title="НИЗКИЙ ПРИРОСТ ≠ СЛАБЫЙ КАНАЛ"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Ключевой инсайт</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">НИЗКИЙ ПРИРОСТ ≠ СЛАБЫЙ КАНАЛ</h4>
-                <p className="text-white/80 mb-4">Механизм перераспределения</p>
-                <p className="text-sm text-white/60">
-                  Низкий прирост часто признак высокой интеграции в ядро аудитории. Папка усиливает менее пересекаемые каналы.
+                <p className="text-sm text-white/70 mb-3">
+                  Рост сам по себе не измеряет «силу». Канал может быть сильным и расти меньше из-за насыщения аудитории.
                 </p>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>Ядро упирается в потолок быстрее: у доноров в волне {SNAPSHOT_WAVE_NUMBER} прирост всего {insightData.donorWave3Sample}</li>
+                  <li>При этом папка продолжает «докармливать» другие каналы поздними волнами</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотеза: низкий прирост чаще означает высокий overlap, а не слабый контент.</p>
+              </InsightCard>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="bg-black p-8 md:p-12"
+              {/* 4. Донорство ≠ тайминг */}
+              <InsightCard
+                idx={3}
+                icon={Clock}
+                meta="Структурная роль"
+                title="ДОНОРСТВО ≠ ТАЙМИНГ"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Структурная роль</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">ДОНОРСТВО ≠ ТАЙМИНГ</h4>
-                <p className="text-white/80 mb-4">Насыщенность аудитории</p>
-                <p className="text-sm text-white/60">
-                  Донорство определяется не таймингом публикации, а насыщенностью аудитории. Каналы-доноры делятся подписчиками независимо от момента поста.
+                <p className="text-sm text-white/70 mb-3">
+                  «Донорский» эффект проявляется как перераспределение роста: у доноров малый прирост по волне {SNAPSHOT_WAVE_NUMBER}, у других — до +{Math.max(...channelData.map((r) => r.growth3 ?? 0))} в том же срезе.
                 </p>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
+                  <li>Гипотеза: донорство определяется насыщенностью аудитории (overlap), тайминг лишь запускает переток</li>
+                </ul>
+              </InsightCard>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
-                className="bg-black p-8 md:p-12"
+              {/* 5. Постепенная распаковка */}
+              <InsightCard
+                idx={4}
+                icon={PackageOpen}
+                meta="Вторая и третья волны"
+                title="ПОСТЕПЕННАЯ РАСПАКОВКА"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Вторая и третья волны</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">ПОСТЕПЕННАЯ РАСПАКОВКА</h4>
-                <p className="text-white/80 mb-4">Решающий период</p>
-                <p className="text-sm text-white/60">
-                  Для «неядерных» каналов вторая и третья волны оказались решающими. Каналы с меньшим overlap добираются постепенно, по мере "распаковки" папки аудиторией.
+                <p className="text-sm text-white/70 mb-3">
+                  У части каналов основная динамика пришлась не на первую волну, а на «хвост».
                 </p>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  {insightData.wave2Leader && (
+                    <li><strong className="text-white/80">{insightData.wave2Leader.channel}</strong> — лидер волны 2 (+{insightData.wave2Leader.growth2})</li>
+                  )}
+                  <li>Диапазоны: волна 2 {insightData.wave2Range}, волна {SNAPSHOT_WAVE_NUMBER} {insightData.wave3Range}</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотезы: задержка постинга, эффект «второго захода» аудитории, лучшая конверсия после просмотра витрины.</p>
+              </InsightCard>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.5 }}
-                className="bg-black p-8 md:p-12"
+              {/* 6. Выравнивание экосистемы */}
+              <InsightCard
+                idx={5}
+                icon={Scale}
+                meta="Финальный эффект"
+                title="ВЫРАВНИВАНИЕ ЭКОСИСТЕМЫ"
               >
-                <div className="text-xs text-white/40 mb-4 uppercase tracking-widest">Финальный эффект</div>
-                <h4 className="text-2xl md:text-3xl font-light mb-6">ВЫРАВНИВАНИЕ ЭКОСИСТЕМЫ</h4>
-                <p className="text-white/80 mb-4">+70…+95 за день</p>
-                <p className="text-sm text-white/60">
-                  К концу дня почти все каналы вышли в диапазон +70…+95. Рост стал плавным и равномерным, без резких скачков — эффект папки отработал.
+                <p className="text-sm text-white/70 mb-3">
+                  К финалу периода экосистема «сошлась» в узкий коридор: примерно <strong className="text-white/80">+{insightData.totalRange}</strong> у большинства каналов.
                 </p>
-              </motion.div>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>Верх: {insightData.topByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
+                  <li>Низ: {insightData.bottomByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
+                </ul>
+                <p className="text-sm text-white/60">Вывод: папка работает как механизм перераспределения и выравнивания.</p>
+              </InsightCard>
+
+              {/* 7. Два типа роста */}
+              <InsightCard
+                idx={6}
+                icon={GitBranch}
+                meta="Доп. инсайт"
+                title="ДВА ТИПА РОСТА: ИМПУЛЬС vs ХВОСТ"
+              >
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li><strong className="text-white/80">Импульсные:</strong> крупная доля прироста в волне 1 (пример: каналы с growth1 &gt; 40)</li>
+                  <li><strong className="text-white/80">Хвостовые:</strong> основной прирост во 2–3 волне {insightData.wave2Leader ? `(${insightData.wave2Leader.channel} +${insightData.wave2Leader.growth2} во 2-й волне)` : ''}</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотеза: импульс зависит от «витрины», хвост — от постинга и возвращаемости аудитории.</p>
+              </InsightCard>
+
+              {/* 8. Кто получил в последнем срезе */}
+              <InsightCard
+                idx={7}
+                icon={Gift}
+                meta="Доп. инсайт"
+                title="КТО «ПОЛУЧИЛ» В ПОСЛЕДНЕМ СРЕЗЕ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  В волне {SNAPSHOT_WAVE_NUMBER} (15:30 → {SNAPSHOT_TIME}) максимальный прирост получили:
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
+                  <li><strong className="text-white/80">{insightData.wave3Leaders.map((r) => `${r.channel} +${r.growth3}`).join(', ')}</strong></li>
+                  <li>Гипотеза: это «карта пересечений» — кто ближе к ядру, тот меньше добирает в срезе; кто дальше — растёт сильнее</li>
+                </ul>
+              </InsightCard>
             </div>
           </div>
         </section>
@@ -1286,16 +1729,21 @@ User-Agent: ${navigator.userAgent}
                     <th className="text-right py-4 px-4 font-light">11:30</th>
                     <th className="text-right py-4 px-4 font-light">15:30</th>
                     <th className="text-right py-4 px-4 font-light">18:06</th>
-                    <th className="text-right py-4 px-4 font-light">18:50</th>
+                    <th className="text-right py-4 px-4 font-light" title={SNAPSHOT_LABEL}>Срез ({SNAPSHOT_TIME})</th>
                     <th className="text-right py-4 px-4 font-light">Волна 1</th>
                     <th className="text-right py-4 px-4 font-light">Волна 2</th>
-                    <th className="text-right py-4 px-4 font-light">Волна 3</th>
+                    <th className="text-right py-4 px-4 font-light">Волна {SNAPSHOT_WAVE_NUMBER}</th>
                     <th className="text-right py-4 px-4 font-light">Итого</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {channelData.map((row, idx) => (
-                    <TableRow key={row.channel} row={row} idx={idx} />
+                  {tableDataSorted.map((row, idx) => (
+                    <TableRow
+                      key={row.channel}
+                      row={row}
+                      idx={idx}
+                      onGenerateInsight={(r) => setInsightModalRow(r)}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -1303,7 +1751,16 @@ User-Agent: ${navigator.userAgent}
           </div>
         </section>
 
-
+        <AnimatePresence mode="wait">
+          {insightModalRow && (
+            <InsightModal
+              key={insightModalRow.channel}
+              channel={insightModalRow.channel}
+              promptText={buildChannelInsightPrompt(insightModalRow, channelData, SNAPSHOT_LABEL)}
+              onClose={() => setInsightModalRow(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Glossary */}
         <section className="border-b border-white/20">
@@ -1317,7 +1774,7 @@ User-Agent: ${navigator.userAgent}
               ГЛОССАРИЙ
             </motion.h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-black">
               <motion.div
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
@@ -1340,6 +1797,19 @@ User-Agent: ${navigator.userAgent}
                 <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна 2</div>
                 <p className="text-white/80">
                   Период с 11:30 до 15:30. Вторичный охват через отложенные посты, пересылки и рекомендации алгоритма.
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.07 }}
+                className="bg-black p-6 md:p-8"
+              >
+                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна {SNAPSHOT_WAVE_NUMBER}</div>
+                <p className="text-white/80">
+                  Срез данных: период с 15:30 до момента снапшота ({SNAPSHOT_LABEL}). Каждый новый скрин «Добавить папку» задаёт следующий срез — в snapshot.ts укажите новый SNAPSHOT_DATETIME и при необходимости увеличьте SNAPSHOT_WAVE_NUMBER.
                 </p>
               </motion.div>
 
@@ -1402,9 +1872,9 @@ User-Agent: ${navigator.userAgent}
                 transition={{ delay: 0.3 }}
                 className="bg-black p-6 md:p-8"
               >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Доно��ы экосистемы</div>
+                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Доноыы экосистемы</div>
                 <p className="text-white/80">
-                  Каналы с большой устоявшейся аудиторией, которые делятся трафиком с др��гими кана��ами папки больше, чем получают сами.
+                  Каналы с большой устоявшейся аудиторией, которые делятся трафиком с дрыгими канаыами папки больше, чем получают сами.
                 </p>
               </motion.div>
 
@@ -1475,21 +1945,15 @@ User-Agent: ${navigator.userAgent}
               >
                 <div className="border-l-4 border-white pl-8 md:pl-12 space-y-6">
                   <p className="text-xl md:text-3xl font-light text-white leading-relaxed">
-                    Папка Career Hub за день отработала как <span className="italic">механизм выравнивания экосистемы</span>
+                    {CONCLUSION.intro}
                   </p>
                   <div className="space-y-4 text-lg md:text-xl text-white/80">
-                    <p className="flex items-start gap-4">
-                      <span className="text-white/40 flex-shrink-0">→</span>
-                      <span><span className="text-white font-medium">ядро</span> (DesignDictatorship и др.) выступило донорами</span>
-                    </p>
-                    <p className="flex items-start gap-4">
-                      <span className="text-white/40 flex-shrink-0">→</span>
-                      <span><span className="text-white font-medium">хвост и средние каналы</span> добрали аудиторию</span>
-                    </p>
-                    <p className="flex items-start gap-4">
-                      <span className="text-white/40 flex-shrink-0">→</span>
-                      <span>рост распределился <span className="text-white font-medium">асинхронно и справедливо</span></span>
-                    </p>
+                    {CONCLUSION.bullets.map((bullet, i) => (
+                      <p key={i} className="flex items-start gap-4">
+                        <span className="text-white/40 flex-shrink-0">→</span>
+                        <span dangerouslySetInnerHTML={{ __html: bullet.replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-white">$1</span>') }} />
+                      </p>
+                    ))}
                   </div>
                   <motion.div 
                     initial={{ opacity: 0 }}
@@ -1499,10 +1963,13 @@ User-Agent: ${navigator.userAgent}
                     className="pt-8 border-t border-white/20 mt-8"
                   >
                     <p className="text-white/60 text-sm md:text-base">
-                      Эксперимент показал, что папки в Telegram работают не просто как агрегаторы контента, 
-                      а как <span className="text-white">органические балансиры аудиторий</span>, 
-                      выравнивающие распределение внимания внутри микросообщества.
+                      {CONCLUSION.closing}
                     </p>
+                    {CONCLUSION_GENERATED_AT && (
+                      <p className="text-white/40 text-xs mt-3">
+                        Вывод сгенерирован по данным от {new Date(CONCLUSION_GENERATED_AT).toLocaleString('ru-RU')}. Обновить: <code className="text-white/60">npm run generate-conclusion</code>
+                      </p>
+                    )}
                   </motion.div>
                 </div>
               </motion.div>
@@ -1518,8 +1985,15 @@ User-Agent: ${navigator.userAgent}
               <div className="text-white/60">Аналитический отчёт</div>
             </div>
             <div className="text-right">
-              <div className="text-white/60 mb-2">8 февраля 2026</div>
-              <div className="text-white/60">11:00 – 18:06</div>
+              <div className="text-white/60 mb-2">
+                Период отчёта: {REPORT_START_LABEL} – {SNAPSHOT_LABEL}
+              </div>
+              <div className="text-white/60">
+                Текущая дата: {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </div>
+              <div className="text-white/50 text-sm mt-2">
+                Данные актуализированы: {SNAPSHOT_LABEL}
+              </div>
             </div>
           </div>
           
