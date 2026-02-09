@@ -1,6 +1,6 @@
 # 🚀 Публикация на GitHub и деплой на Vercel
 
-Репозиторий уже настроен на `origin`: **https://github.com/alexeygruzdev/career-hub-report.git**
+Репозиторий уже настроен на `origin`: **https://github.com/lx-grzdv/career-hub-report.git**
 
 ## 1. Создать репозиторий на GitHub
 
@@ -45,7 +45,7 @@ git remote set-url origin https://github.com/ВАШ_USERNAME/ИМЯ_РЕПО.git
 1. Настройте [SSH-ключ на GitHub](https://docs.github.com/en/authentication/connecting-to-github-with-ssh).
 2. Поменяйте remote на SSH и пушьте:
    ```bash
-   git remote set-url origin git@github.com:alexeygruzdev/career-hub-report.git
+   git remote set-url origin git@github.com:lx-grzdv/career-hub-report.git
    git push -u origin main
    ```
 
