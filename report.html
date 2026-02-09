@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Отчёт по папке Career Hub — динамика каналов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-card: #141420;
+      --bg-card-hover: #1a1a2e;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-tertiary: rgba(255, 255, 255, 0.5);
+      --accent-purple: #8b5cf6;
+      --accent-pink: #ec4899;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: backgroundPulse 20s ease infinite;
+    }
+
+    @keyframes backgroundPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 40px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 32px 0;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 80px;
+      opacity: 0;
+      animation: fadeInDown 0.8s ease forwards;
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+
+    .support-btn {
+      padding: 12px 24px;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .support-btn:hover {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      border-color: transparent;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      margin-bottom: 120px;
+      opacity: 0;
+      animation: fadeInUp 1s ease 0.2s forwards;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 {
+      font-size: clamp(3.5rem, 8vw, 6.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 32px;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-purple) 50%, var(--accent-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 18px;
+      color: var(--text-secondary);
+      max-width: 700px;
+      margin: 0 auto 24px;
+      line-height: 1.7;
+    }
+
+    .hero-subtitle small {
+      display: block;
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-tertiary);
+    }
+
+    /* Section Cards */
+    .section {
+      margin-bottom: 100px;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .section.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 48px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink), var(--accent-blue));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .section-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.1);
+      background: var(--bg-card-hover);
+    }
+
+    .section-card:hover::before {
+      opacity: 1;
+    }
+
+    h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      margin-bottom: 40px;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h3 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 600;
+      margin: 48px 0 24px;
+      color: var(--accent-cyan);
+      letter-spacing: -0.01em;
+    }
+
+    /* Summary Cards */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin: 48px 0;
+    }
+
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, var(--accent-purple), var(--accent-pink));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .summary-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: 0 10px 40px rgba(139, 92, 246, 0.2);
+    }
+
+    .summary-card:hover::before {
+      opacity: 1;
+    }
+
+    .summary-card:nth-child(2)::before {
+      background: linear-gradient(180deg, var(--accent-blue), var(--accent-cyan));
+    }
+
+    .summary-card:nth-child(3)::before {
+      background: linear-gradient(180deg, var(--accent-pink), var(--accent-purple));
+    }
+
+    .summary-card-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .summary-card-value {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .summary-card:nth-child(2) .summary-card-value {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .summary-card:nth-child(3) .summary-card-value {
+      background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .summary-card-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Table */
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 32px 0;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      min-width: 1000px;
+    }
+
+    thead {
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    th {
+      padding: 20px 24px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th:first-child {
+      text-align: left;
+    }
+
+    td {
+      padding: 20px 24px;
+      text-align: right;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    td.channel {
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    tbody tr:hover {
+      background: rgba(139, 92, 246, 0.05);
+      transform: scale(1.01);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .good {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+    }
+
+    .bad {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+    }
+
+    .top-leader {
+      border-left: 3px solid var(--accent-green);
+      position: relative;
+    }
+
+    .top-leader:nth-child(2) {
+      border-left-color: var(--accent-cyan);
+    }
+
+    .top-leader:nth-child(3) {
+      border-left-color: var(--accent-pink);
+    }
+
+    .top-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-left: 12px;
+      background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+      color: var(--bg-dark);
+    }
+
+    .top-badge.top-2 {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    }
+
+    .top-badge.top-3 {
+      background: linear-gradient(135deg, var(--accent-pink), var(--accent-purple));
+      color: var(--text-primary);
+    }
+
+    td.total-growth {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--accent-green);
+    }
+
+    .highlight-number {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--accent-purple);
+    }
+
+    .highlight-number.wave-1 {
+      color: var(--accent-cyan);
+    }
+
+    .highlight-number.wave-2 {
+      color: var(--accent-pink);
+    }
+
+    /* Links */
+    a {
+      color: var(--accent-purple);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      border-bottom: 1px solid transparent;
+    }
+
+    a:hover {
+      color: var(--accent-pink);
+      border-bottom-color: var(--accent-pink);
+    }
+
+    td.channel a {
+      border-bottom: none;
+    }
+
+    td.channel a:hover {
+      color: var(--accent-purple);
+      text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+    }
+
+    /* Lists */
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 32px 0;
+    }
+
+    li {
+      padding: 16px 0;
+      padding-left: 32px;
+      position: relative;
+      color: var(--text-secondary);
+      line-height: 1.8;
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    li:last-child {
+      border-bottom: none;
+    }
+
+    li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent-purple);
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    li:hover {
+      color: var(--text-primary);
+      padding-left: 40px;
+    }
+
+    li:hover::before {
+      color: var(--accent-pink);
+      transform: translateX(4px);
+    }
+
+    li strong {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    ul ul {
+      margin: 20px 0 20px 40px;
+      border-left: 2px solid var(--border-color);
+      padding-left: 24px;
+    }
+
+    ul ul li {
+      border-bottom: none;
+      padding: 12px 0;
+      font-size: 14px;
+    }
+
+    ul ul li::before {
+      content: '•';
+      color: var(--accent-cyan);
+    }
+
+    /* Text */
+    p {
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 24px;
+      color: var(--text-secondary);
+      max-width: 800px;
+    }
+
+    small {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    /* Highlight Box */
+    .highlight-box {
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 48px;
+      margin: 48px 0;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(236, 72, 153, 0.1));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .highlight-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink), var(--accent-blue));
+      opacity: 0.6;
+    }
+
+    .highlight-box h2 {
+      margin-bottom: 32px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 24px;
+      }
+
+      .section-card {
+        padding: 32px 24px;
+      }
+
+      .summary-cards {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      h2 {
+        font-size: 2rem;
+      }
+
+      table {
+        font-size: 13px;
+        min-width: 800px;
+      }
+
+      th, td {
+        padding: 12px 16px;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--accent-purple), var(--accent-pink));
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, var(--accent-pink), var(--accent-purple));
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">Career Hub Report</div>
+    <button class="support-btn">Support</button>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Отчёт по папке<br>«Career Hub»</h1>
+    <div class="hero-subtitle">
+      Динамика каналов дизайна
+      <small>Дата: 8 февраля. Срезы: 11:00 (старт), 11:30 (первая волна), ~15:30 (использован 15:22), ~18:06 (после публикации <a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a>).</small>
+    </div>
+  </div>
+
+  <!-- Section 1 -->
+  <section class="section" id="summary">
+    <div class="section-card">
+      <h2>1. Сводная таблица прироста</h2>
+      <p><small>Отсортировано по итоговому приросту с 11:00 до ~18:06.</small></p>
+
+      <!-- Key Stats Summary -->
+      <div class="summary-cards">
+        <div class="summary-card">
+          <div class="summary-card-title">Топ-3 лидера</div>
+          <div class="summary-card-value">+93</div>
+          <div class="summary-card-desc"><a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> — абсолютный лидер роста</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-title">Средний прирост</div>
+          <div class="summary-card-value">+81</div>
+          <div class="summary-card-desc">Средний прирост по всем каналам</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-title">Общий эффект</div>
+          <div class="summary-card-value">+970</div>
+          <div class="summary-card-desc">Суммарный прирост подписчиков</div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Канал</th>
+              <th>11:00</th>
+              <th>11:30</th>
+              <th>15:30</th>
+              <th>Сейчас</th>
+              <th>Δ 11:00→11:30</th>
+              <th>Δ 11:30→15:30</th>
+              <th>Итого Δ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> <span class="top-badge top-1">#1</span></td>
+              <td>580</td><td>596</td><td>672</td><td>673</td>
+              <td class="highlight-number wave-1">+16</td><td class="highlight-number wave-2">+76</td><td class="total-growth">+93</td>
+            </tr>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/tooltipp" target="_blank">@tooltipp</a> <span class="top-badge top-2">#2</span></td>
+              <td>342</td><td>392</td><td>429</td><td>433</td>
+              <td class="highlight-number wave-1">+50</td><td class="highlight-number wave-2">+37</td><td class="total-growth">+91</td>
+            </tr>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a> <span class="top-badge top-3">#3</span></td>
+              <td>473</td><td>523</td><td>557</td><td>562</td>
+              <td class="highlight-number wave-1">+50</td><td class="highlight-number wave-2">+34</td><td class="total-growth">+89</td>
+            </tr>
+            <tr class="good">
+              <td class="channel"><a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a></td>
+              <td>734</td><td>782</td><td>815</td><td>823</td>
+              <td>+48</td><td>+33</td><td class="total-growth">+89</td>
+            </tr>
+            <tr class="good">
+              <td class="channel"><a href="https://t.me/prodtomorrow" target="_blank">@prodtomorrow</a></td>
+              <td>520</td><td>568</td><td>598</td><td>605</td>
+              <td>+48</td><td>+30</td><td class="total-growth">+85</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/sshultse" target="_blank">@sshultse</a></td>
+              <td>566</td><td>604</td><td>638</td><td>648</td>
+              <td>+38</td><td>+34</td><td class="total-growth">+82</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/lx_grzdv_links" target="_blank">@lx_grzdv_links</a></td>
+              <td>650</td><td>694</td><td>730</td><td>732</td>
+              <td>+44</td><td>+36</td><td class="total-growth">+82</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/trueredorescue" target="_blank">@trueredorescue</a></td>
+              <td>550</td><td>587</td><td>620</td><td>626</td>
+              <td>+37</td><td>+33</td><td class="total-growth">+76</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/dsgn_thinking" target="_blank">@dsgn_thinking</a></td>
+              <td>678</td><td>721</td><td>743</td><td>754</td>
+              <td>+43</td><td>+22</td><td class="total-growth">+76</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/yuliapohilko" target="_blank">@yuliapohilko</a></td>
+              <td>510</td><td>521</td><td>569</td><td>585</td>
+              <td>+11</td><td class="highlight-number wave-2">+48</td><td class="total-growth">+75</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/kuntsevich_design" target="_blank">@kuntsevich_design</a></td>
+              <td>828</td><td>870</td><td>891</td><td>903</td>
+              <td>+42</td><td>+21</td><td class="total-growth">+75</td>
+            </tr>
+            <tr class="bad">
+              <td class="channel"><a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a></td>
+              <td>366</td><td>401</td><td>435</td><td>435</td>
+              <td>+35</td><td>+34</td><td class="total-growth">+69</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 2 -->
+  <section class="section" id="waves">
+    <div class="section-card">
+      <h2>2. Анализ волн</h2>
+
+      <h3>Первая волна (11:00 → 11:30)</h3>
+      <ul>
+        <li><strong>Максимальный ранний импульс:</strong> <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a>, <a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a> <span class="highlight-number wave-1">(+50)</span></li>
+        <li><strong>Сильный старт:</strong> <a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a>, <a href="https://t.me/prodtomorrow" target="_blank">@prodtomorrow</a> <span class="highlight-number wave-1">(+48)</span></li>
+        <li><strong>Поздний старт:</strong> <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> (+16), <a href="https://t.me/yuliapohilko" target="_blank">@yuliapohilko</a> (+11)</li>
+      </ul>
+
+      <h3>Вторая волна (11:30 → ~15:30)</h3>
+      <ul>
+        <li><strong>Абсолютный лидер второй волны:</strong> <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> <span class="highlight-number wave-2">(+76)</span></li>
+        <li><strong>Сильный рост:</strong> <a href="https://t.me/yuliapohilko" target="_blank">@yuliapohilko</a> <span class="highlight-number wave-2">(+48)</span></li>
+        <li><strong>Стабильная группа:</strong> <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a>, <a href="https://t.me/lx_grzdv_links" target="_blank">@lx_grzdv_links</a>, <a href="https://t.me/sshultse" target="_blank">@sshultse</a>, <a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a> (+34…+37)</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 3 -->
+  <section class="section" id="overlap">
+    <div class="section-card">
+      <h2>3. Гипотезы по пересечению аудиторий</h2>
+
+      <ul>
+        <li><strong>Максимальный overlap (ядро):</strong> <a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a>, <a href="https://t.me/kuntsevich_design" target="_blank">@kuntsevich_design</a>, <a href="https://t.me/dsgn_thinking" target="_blank">@dsgn_thinking</a>  
+          <br><small>Сильный старт, быстрое плато, слабый direct-эффект после поста DD.</small>
+        </li>
+        <li><strong>Средний overlap:</strong> <a href="https://t.me/lx_grzdv_links" target="_blank">@lx_grzdv_links</a>, <a href="https://t.me/trueredorescue" target="_blank">@trueredorescue</a>, <a href="https://t.me/sshultse" target="_blank">@sshultse</a>  
+          <br><small>Растут и в первой, и во второй волне, но без резких всплесков.</small>
+        </li>
+        <li><strong>Низкий overlap (бенефициары):</strong> <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a>, <a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a>, <a href="https://t.me/prodtomorrow" target="_blank">@prodtomorrow</a>, <a href="https://t.me/yuliapohilko" target="_blank">@yuliapohilko</a>, <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a>  
+          <br><small>Основной рост во второй волне и после публикации доноров.</small>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 4 -->
+  <section class="section" id="growth">
+    <div class="section-card">
+      <h2>4. Гипотезы большого прироста</h2>
+      <ul>
+        <li>Чёткое value-обещание (инструменты, UX, продукт).</li>
+        <li>Низкое пересечение с ядром аудитории папки.</li>
+        <li>Поздний или асинхронный постинг → захват второй волны внимания.</li>
+        <li>Эстетика и визуальный «крючок» (особенно <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a>).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 5 -->
+  <section class="section" id="low-growth">
+    <div class="section-card">
+      <h2>5. Гипотезы малого прироста</h2>
+      <ul>
+        <li>Высокое пересечение аудиторий (уже подписаны).</li>
+        <li>Канал выступает донором, а не получателем трафика.</li>
+        <li>Витрина менее конверсионна для холодной аудитории.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Section 6 -->
+  <section class="section" id="conclusion">
+    <div class="section-card">
+      <div class="highlight-box">
+        <h2>6. Итог по дню</h2>
+
+        <p>
+          Папка <strong>Career Hub</strong> за день показала себя как <strong>механизм перераспределения аудитории</strong>, а не равномерного роста:
+        </p>
+
+        <ul>
+          <li><strong>Лидеры роста:</strong> <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> <span class="highlight-number">(+93)</span>, <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a> <span class="highlight-number">(+91)</span>, <a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a> <span class="highlight-number">(+89)</span>.</li>
+          <li><strong>Доноры экосистемы:</strong> <a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a>, <a href="https://t.me/kuntsevich_design" target="_blank">@kuntsevich_design</a>, <a href="https://t.me/dsgn_thinking" target="_blank">@dsgn_thinking</a>.</li>
+          <li><strong>Главный эффект:</strong> папка усиливает менее пересекаемые каналы, выравнивая экосистему.</li>
+          <li><strong>Ключевой инсайт дня:</strong> низкий прирост ≠ слабый канал; часто это признак высокой интеграции в ядро.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 7 -->
+  <section class="section" id="update">
+    <div class="section-card">
+      <h2>7. Апдейт по срезу ~18:50</h2>
+      <p><small>Дополнительный срез после поста в <a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a>. Смотрим прирост за короткий интервал ~18:06 → ~18:50.</small></p>
+
+      <!-- Quick Stats -->
+      <div class="summary-cards" style="grid-template-columns: repeat(3, 1fr); margin-top: 40px;">
+        <div class="summary-card">
+          <div class="summary-card-title">Максимальный прирост</div>
+          <div class="summary-card-value">+10</div>
+          <div class="summary-card-desc"><a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a> — лидер финального интервала</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-title">Средний прирост</div>
+          <div class="summary-card-value">+5.3</div>
+          <div class="summary-card-desc">Средний прирост за 44 минуты</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-card-title">Общий эффект</div>
+          <div class="summary-card-value">+64</div>
+          <div class="summary-card-desc">Суммарный прирост за интервал</div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Канал</th>
+              <th>Было ~18:06</th>
+              <th>Стало ~18:50</th>
+              <th>Δ за интервал</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a> <span class="top-badge top-1">#1</span></td>
+              <td>435</td><td>445</td><td class="total-growth">+10</td>
+            </tr>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> <span class="top-badge top-2">#2</span></td>
+              <td>673</td><td>681</td><td class="total-growth">+8</td>
+            </tr>
+            <tr class="good top-leader">
+              <td class="channel"><a href="https://t.me/kuntsevich_design" target="_blank">@kuntsevich_design</a> <span class="top-badge top-3">#3</span></td>
+              <td>903</td><td>911</td><td class="total-growth">+8</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/tooltipp" target="_blank">@tooltipp</a></td>
+              <td>433</td><td>440</td><td class="total-growth">+7</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a></td>
+              <td>562</td><td>569</td><td class="total-growth">+7</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/lx_grzdv_links" target="_blank">@lx_grzdv_links</a></td>
+              <td>732</td><td>737</td><td class="total-growth">+5</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/sshultse" target="_blank">@sshultse</a></td>
+              <td>648</td><td>653</td><td class="total-growth">+5</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/prodtomorrow" target="_blank">@prodtomorrow</a></td>
+              <td>605</td><td>609</td><td class="total-growth">+4</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/yuliapohilko" target="_blank">@yuliapohilko</a></td>
+              <td>585</td><td>589</td><td class="total-growth">+4</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a></td>
+              <td>823</td><td>825</td><td>+2</td>
+            </tr>
+            <tr>
+              <td class="channel"><a href="https://t.me/dsgn_thinking" target="_blank">@dsgn_thinking</a></td>
+              <td>754</td><td>756</td><td>+2</td>
+            </tr>
+            <tr class="bad">
+              <td class="channel"><a href="https://t.me/trueredorescue" target="_blank">@trueredorescue</a></td>
+              <td>626</td><td>626</td><td>0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Что показал финальный интервал</h3>
+      <ul>
+        <li><strong>Рост продолжился, но стал более рассеянным:</strong> почти все каналы прибавили ещё по 2–10 подписчиков, без новых «взрывов».</li>
+        <li><strong><a href="https://t.me/DesignDictatorship" target="_blank">@DesignDictatorship</a> остаётся донором:</strong> после собственного поста за короткий интервал получил всего <span class="highlight-number">+2</span>, тогда как другие каналы (например, <a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a> <span class="highlight-number">(+10)</span>, <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a> <span class="highlight-number">(+8)</span>, <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a> <span class="highlight-number">(+7)</span>, <a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a> <span class="highlight-number">(+7)</span>) выросли заметно сильнее.</li>
+        <li><strong>Поздние бенефициары:</strong> во второй и третьей волне лучше всего добирались <a href="https://t.me/pxPerson_produced" target="_blank">@pxPerson_produced</a>, <a href="https://t.me/visuaaaals" target="_blank">@visuaaaals</a>, <a href="https://t.me/kuntsevich_design" target="_blank">@kuntsevich_design</a>, <a href="https://t.me/tooltipp" target="_blank">@tooltipp</a> и <a href="https://t.me/nix_ux_view" target="_blank">@nix_ux_view</a> — для них папка и пост DD дали дополнительный хвост роста.</li>
+        <li><strong>Экосистема вышла на плато:</strong> к ~18:50 суммарный прирост по большинству каналов стабилизировался в коридоре <span class="highlight-number">+70…+95</span> за день, без сильных перекосов.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+  // Intersection Observer for scroll animations
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -100px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, observerOptions);
+
+  // Observe all sections
+  document.querySelectorAll('.section').forEach((section, index) => {
+    observer.observe(section);
+    section.style.transitionDelay = `${index * 0.1}s`;
+  });
+
+  // Add stagger animation to table rows
+  const tableRows = document.querySelectorAll('tbody tr');
+  tableRows.forEach((row, index) => {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-20px)';
+    row.style.transition = `all 0.4s ease ${index * 0.05}s`;
+    
+    setTimeout(() => {
+      row.style.opacity = '1';
+      row.style.transform = 'translateX(0)';
+    }, 500 + index * 50);
+  });
+
+  // Add hover effects to cards
+  const cards = document.querySelectorAll('.summary-card, .section-card');
+  cards.forEach(card => {
+    card.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-8px) scale(1.01)';
+    });
+    
+    card.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0) scale(1)';
+    });
+  });
+</script>
+
+</body>
+</html>
