@@ -27,32 +27,32 @@ export const REPORT_START_DATETIME = '2026-02-09T11:00:00';
 export const REPORT_START_LABEL = '9 февраля 2026, 11:00';
 
 /** Дата и время снапшота экрана «Добавить папку» (ISO). */
-export const SNAPSHOT_DATETIME = '2026-02-10T11:00:22';
+export const SNAPSHOT_DATETIME = '2026-02-10T16:38:13';
 
 /** Дата снапшота (для подписи). */
 export const SNAPSHOT_DATE = '2026-02-10';
 
 /** Подпись для отчёта: дата и время снапшота. */
-export const SNAPSHOT_LABEL = '10 февраля 2026, 11:00';
+export const SNAPSHOT_LABEL = '10 февраля 2026, 16:38';
 
 /** Время снапшота для диапазона волны (как в «11:00 → 11:30»). */
-export const SNAPSHOT_TIME = '11:00';
+export const SNAPSHOT_TIME = '16:38';
 
 /** Номер волны для текущего среза данных (снапшота). При добавлении нового скрина увеличьте на 1. */
-export const SNAPSHOT_WAVE_NUMBER = 5;
+export const SNAPSHOT_WAVE_NUMBER = 6;
 
 /** Текущий срез данных по количеству участников (username без @). */
 export const snapshotMembers: Record<string, number> = {
-  prodtomorrow: 628,
+  prodtomorrow: 630,
   sshultse: 665,
   pxPerson_produced: 452,
   nix_ux_view: 580,
-  tooltipp: 456,
+  tooltipp: 463,
   trueredorescue: 639,
-  DesignDictatorship: 835,
-  dsgn_thinking: 772,
+  DesignDictatorship: 842,
+  dsgn_thinking: 773,
   visuaaaals: 687,
-  kuntsevich_design: 922,
-  lx_grzdv_links: 753,
+  kuntsevich_design: 930,
+  lx_grzdv_links: 755,
   yuliapohilko: 596,
 };
