@@ -36,6 +36,7 @@
 ├── vite.config.ts          # Прокси /api → localhost:3001
 ├── vercel.json             # Rewrites: /api/(.*) → /api/$1; /(.*) → /index.html
 ├── .env, .env.example
+├── career_hub_channels.csv # Субъективные заметки по каналам (сырой источник профилей)
 ├── api/
 │   └── generate-channel-insight.js  # Vercel Serverless: инсайты по каналу (продакшен)
 ├── server/
@@ -47,17 +48,18 @@
 ├── src/
 │   ├── main.tsx
 │   ├── app/
-│   │   ├── App.tsx         # Главный компонент: данные, таблица, инсайты, графики
-│   │   ├── components/     # LazySection, LoadingScreen, UI (radix), figma
+│   │   ├── App.tsx             # Главный компонент: данные, таблица, инсайты, графики
+│   │   ├── components/         # LazySection, LoadingScreen, UI (radix), figma
 │   │   └── utils/
 │   ├── data/
-│   │   ├── snapshot.ts     # Снапшот: дата/время, snapshotMembers (username → число)
-│   │   ├── channelBase.ts  # Базовые данные: base, wave1, wave2, current по каналам
-│   │   ├── conclusion.ts   # Текстовый вывод (генерируется скриптом)
-│   │   └── insights.ts     # Вспомогательные тексты инсайтов (по необходимости)
+│   │   ├── snapshot.ts         # Снапшот: дата/время, snapshotMembers (username → число)
+│   │   ├── channelBase.ts      # Базовые данные: base, wave1, wave2, current по каналам
+│   │   ├── channelProfiles.ts  # Краткие текстовые профили каналов для промпта инсайтов
+│   │   ├── conclusion.ts       # Текстовый вывод (генерируется скриптом)
+│   │   └── insights.ts         # Вспомогательные тексты инсайтов (по необходимости)
 │   └── styles/
 └── docs/
-    ├── PROJECT.md          # Этот файл
+    ├── PROJECT.md              # Этот файл
     └── PROMPT-UPDATE-KEY-INSIGHTS.md  # Промпт для обновления инсайтов в report.html
 ```
 
@@ -82,6 +84,12 @@
 ### 4.3. Вывод — `src/data/conclusion.ts`
 
 Текстовый блок «Финальный вывод»; генерируется скриптом `npm run generate-conclusion` по данным снапшота и channelBase.
+
+### 4.4. Профили каналов — `src/data/channelProfiles.ts` / `career_hub_channels.csv`
+
+- **career_hub_channels.csv** — исходный CSV с субъективными описаниями каналов (колонки `folder,channel_title,handle,author,my_characteristic`).
+- **`CHANNEL_PROFILES` в `src/data/channelProfiles.ts`** — компактная карта `handle → 1–3 предложения`, собранная вручную из CSV.
+- Эти профили не участвуют в расчёте метрик и используются только как OPTIONAL_PROFILE в промпте для AI-инсайтов по каналу.
 
 ---
 
@@ -129,6 +137,8 @@
 
 - Таблица лидеров роста с колонками: канал, база, волна 1, волна 2, текущее, финал, прирост по волнам, тип.
 - Кнопка ✨ в строке канала — открывает модалку с AI-инсайтами по каналу (запрос к `/api/generate-channel-insight`).
+  - В промпт передаются данные по волнам (из `channelBase.ts` + `snapshot.ts`), список каналов папки и OPTIONAL_PROFILE из `channelProfiles.ts`.
+  - Ответ структурирован в секции A/B/C/D/F: TL;DR, метрики, инсайты, гипотезы и контекст сравнения (рекомендации «что делать» не запрашиваются).
 - Графики по волнам, блок «Наблюдение», карточки «Ключевые инсайты» (строятся по `channelData` и данным из snapshot/channelBase).
 - Футер: период отчёта, текущая дата, дата актуализации данных (из snapshot).
 - Кнопка «Добавить папку» — ссылка на добавление папки в Telegram.

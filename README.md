@@ -37,13 +37,14 @@
 /
 ├── index.html, report.html    # Точки входа
 ├── vercel.json                # Rewrites: /api → serverless, остальное → SPA
+├── career_hub_channels.csv    # Субъективные заметки по каналам (сырой источник профилей)
 ├── api/
 │   └── generate-channel-insight.js  # Vercel Serverless: инсайты (продакшен)
 ├── server/
 │   └── index.js               # Локальный API при npm run dev (порт 3001)
 ├── src/
 │   ├── app/App.tsx            # Главный компонент
-│   ├── data/                  # snapshot.ts, channelBase.ts, conclusion.ts
+│   ├── data/                  # snapshot.ts, channelBase.ts, channelProfiles.ts, conclusion.ts
 │   └── styles/
 └── docs/                      # PROJECT.md, PROMPT-UPDATE-KEY-INSIGHTS.md
 ```
@@ -77,6 +78,8 @@ npm run build
 
 По клику на ✨ в строке канала открывается модалка с AI-инсайтами по каналу (запрос к `/api/generate-channel-insight`).
 
+- В промпт уходит: числовой профиль канала по волнам (`channelBase.ts` + `snapshot.ts`), список каналов папки и краткое текстовое описание канала из `channelProfiles.ts` (собрано из `career_hub_channels.csv`).
+- Ответ структурирован в секции A/B/C/D/F: TL;DR, метрики, инсайты, гипотезы и контекст сравнения — без блока «что делать» и без общих советов.
 - **Локально:** `npm run dev` — запускаются Vite и API (порт 3001). Нужен `OPENAI_API_KEY` в `.env`.
 - **На продакшене (Vercel):** запросы обрабатывает `api/generate-channel-insight.js`. В Vercel → Settings → Environment Variables добавьте `OPENAI_API_KEY`; после этого инсайты работают на https://career-hub-report.vercel.app без доп. настроек.
 
