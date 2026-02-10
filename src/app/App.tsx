@@ -19,8 +19,17 @@ import { PerformanceOptimizer } from './components/PerformanceOptimizer';
 import { PerformanceMonitor } from './components/PerformanceMonitor';
 import { LazySection } from './components/LazySection';
 import { LoadingScreen } from './components/LoadingScreen';
-import { snapshotMembers, SNAPSHOT_LABEL, SNAPSHOT_TIME, REPORT_START_DATETIME, REPORT_START_LABEL, SNAPSHOT_DATETIME, SNAPSHOT_WAVE_NUMBER } from '../data/snapshot';
+import {
+  snapshotMembers,
+  SNAPSHOT_LABEL,
+  SNAPSHOT_TIME,
+  REPORT_START_DATETIME,
+  REPORT_START_LABEL,
+  SNAPSHOT_DATETIME,
+  SNAPSHOT_WAVE_NUMBER,
+} from '../data/snapshot';
 import { BASE_CHANNEL_DATA } from '../data/channelBase';
+import { CHANNEL_PROFILES } from '../data/channelProfiles';
 import { CONCLUSION, CONCLUSION_GENERATED_AT } from '../data/conclusion';
 
 // Performance optimizations for mobile
@@ -599,36 +608,53 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
   );
 };
 
-const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram-каналов внутри папки. Сгенерируй инсайты и гипотезы для ОДНОГО канала на основе числовых срезов подписчиков.
+const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram‑каналов внутри ОДНОЙ папки. Дай короткий, «человеческий» разбор ОДНОГО канала по числам. Без канцелярита и без воды.
 
-ВХОД:
-- TARGET_CHANNEL: <handle> (например "@tooltipp")
-- BASELINE_DATA: данные по каналам из src/data/channelBase.ts
-- SNAPSHOT_DATA: последний срез из src/data/snapshot.ts
-- OPTIONAL_SNAPSHOTS: если в проекте есть дополнительные срезы (например 11:30, 15:22, 18:06, 18:50, 23:56), используй их. Если нет — работай только с тем, что есть.
-- FOLDER_CHANNELS: список 12 каналов папки (включая TARGET_CHANNEL)
+ВХОДНЫЕ ДАННЫЕ:
+- TARGET_CHANNEL — один handle из папки
+- BASELINE_DATA — строки вида "@chan: base=..., 11:30=..., 15:30=..., 18:06=..."
+- SNAPSHOT_DATA — строки вида "@chan: latest=..." (последний срез)
+- OPTIONAL_PROFILE (может отсутствовать) — 1–3 предложения описания канала (субъективная характеристика автора)
+- FOLDER_CHANNELS — список всех каналов папки (включая TARGET_CHANNEL)
 
-ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:
-1) Никаких определений терминов. Только выводы и гипотезы, подкреплённые числами.
-2) Каждый инсайт должен содержать минимум 2 конкретные цифры (например "342→447 = +105", "+50 за 30 минут").
-3) Не выдумывать отсутствующие точки. Если нет 11:30/15:22 — явно скажи, какие окна невозможно посчитать.
-4) Сравни TARGET_CHANNEL с остальными каналами папки: место в рейтинге по итоговому приросту; отличия профиля роста: "ранний импульс" vs "хвост"; наличие late-tail.
-5) Гипотезы должны быть привязаны к данным и паттернам (низкий/high overlap, витрина, донорский/бенефициарный эффект, тайминг).
-6) Структура ответа фиксирована (см. ниже). Пиши на русском, коротко и по делу.
+КЛЮЧЕВАЯ ИДЕЯ:
+Твоя задача — аккуратно описать, ЧТО видно в данных и ЧЕМ канал отличается от фона папки. Не придумывай мотивацию людей и «универсальные советы».
 
-ЧТО НУЖНО ПОСЧИТАТЬ (если есть данные): Start = 11:00 (base), Wave1 = Δ(11:00→11:30), Wave2 = Δ(11:30→15:30), Total = Δ(11:00→latest), LateTail = Δ(18:06→latest).
+СТРОГИЕ ПРАВИЛА:
+1) Не давать рекомендации и «что делать». Вообще. Никаких action items.
+2) Никаких определений терминов.
+3) Не придумывать факты. Если данных не хватает — напиши «н/д».
+4) Каждый вывод в секциях C и D должен содержать минимум 2 числа (например: "+44 и +23", "6/12 и +16.2%").
+5) Обязательно джойни BASELINE_DATA и SNAPSHOT_DATA по каналу и построй ряд:
+   T0=base(11:00), T1=11:30, T2=15:30, T3=18:06, T4=latest.
+6) Санити‑чек: Total = T4 − T0. Если не сходится — напиши «конфликт данных» и больше ничего не анализируй.
+7) Про «рабочее время/фон дня» можно писать ТОЛЬКО если ты сравнил окно с фоном папки (например, среднее по Δ23). Без такого сравнения не делай выводов про поведение людей.
 
-ФОРМАТ ВЫХОДА (строго):
-A) TL;DR (1 предложение)
-B) Метрики (4–6 строк: "показатель: число → число = Δ")
-C) Инсайты (4–6 буллетов с цифрами)
-D) Гипотезы (3–5 буллетов по паттернам из данных)
-E) Что делать (2–4 практических шага для автора канала)
-F) Контекст сравнения (место в рейтинге по Total, кто выше/ниже)
+ЧТО СЧИТАТЬ (обязательно, если есть данные):
+- Δ01 = T1 − T0 (11:00→11:30)
+- Δ12 = T2 − T1 (11:30→15:30)
+- Δ23 = T3 − T2 (15:30→18:06)
+- Δ34 = T4 − T3 (18:06→latest)
+- Total = T4 − T0
+- Growth% = Total / T0 * 100 (округли до 1 знака)
+- Доли вкладов: Share01/12/23/34 = Δ / Total * 100 (до 1 знака)
+- RankTotal: место по Total среди всех каналов (1 = лучший)
+- RankTail: место по Δ34 среди всех каналов
+- WindowBenchmarks: хотя бы среднее по папке для Δ23 (чтобы понимать фон рабочего окна)
 
-ДАННЫЕ ДЛЯ ОБРАБОТКИ:
+ФОРМАТ ВЫХОДА (строго, только эти секции):
+A) TL;DR — 1 предложение: место по Total, Total и %, и главная особенность профиля (где сделан рост).
+B) Метрики — 8–12 коротких строк (base→latest, Total, Growth%, Δ01/Δ12/Δ23/Δ34, доли, RankTotal, RankTail, сравнение Δ23 с фоном папки).
+C) Инсайты — 3–5 буллетов: что видно по каналу и чем он отличается от фона/соседей (везде цифры).
+D) Гипотезы — 2–3 буллета: только аккуратные гипотезы, которые действительно следуют из профиля по окнам и OPTIONAL_PROFILE (если дан).
+F) Контекст сравнения — 3–4 строки: соседи выше/ниже по Total (канал и число), и кто в топ‑3 по Total.
+
+ДАННЫЕ:
 TARGET_CHANNEL:
 <<<TARGET_CHANNEL>>>
+
+OPTIONAL_PROFILE:
+<<<OPTIONAL_PROFILE>>>
 
 FOLDER_CHANNELS:
 <<<FOLDER_CHANNELS>>>
@@ -648,15 +674,15 @@ function buildChannelInsightPrompt(
   allChannelData: typeof BASE_CHANNEL_DATA extends (infer R)[] ? (R & { final?: number; growth3?: number; total?: number })[] : never,
   snapshotLabel: string
 ): string {
+  const optionalProfile = CHANNEL_PROFILES[targetRow.channel] ?? '';
   const folderChannels = allChannelData.map((r) => r.channel).join(', ');
   const baselineData = allChannelData
     .map((r) => `${r.channel}: base=${r.base}, 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`)
     .join('\n');
   const snapshotData = `${snapshotLabel}\n` + allChannelData.map((r) => `${r.channel}: ${(r as { final?: number }).final ?? r.current}`).join('\n');
-  const optionalSnapshots = allChannelData
-    .map((r) => `${r.channel}: 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`)
-    .join('\n');
+  const optionalSnapshots = allChannelData.map((r) => `${r.channel}: 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`).join('\n');
   return CHANNEL_INSIGHT_PROMPT.replace('<<<TARGET_CHANNEL>>>', targetRow.channel)
+    .replace('<<<OPTIONAL_PROFILE>>>', optionalProfile || 'н/д')
     .replace('<<<FOLDER_CHANNELS>>>', folderChannels)
     .replace('<<<BASELINE_DATA>>>', baselineData)
     .replace('<<<SNAPSHOT_DATA>>>', snapshotData)
