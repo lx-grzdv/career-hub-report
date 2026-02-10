@@ -63,6 +63,22 @@ git remote set-url origin https://github.com/ВАШ_USERNAME/ИМЯ_РЕПО.git
 
 После деплоя сайт будет доступен по адресу вида `https://career-hub-report-xxx.vercel.app`. Домен можно изменить в настройках проекта Vercel.
 
+**Важно:** в репозитории должны быть папка **`api/`** (файл `api/generate-channel-insight.js`) и **`vercel.json`** с rewrites: сначала `/api/(.*)` → `/api/$1`, затем `/(.*)` → `/index.html`. Так запросы к `/api/*` обрабатываются серверной функцией, а не SPA.
+
+### Включить генерацию инсайтов (нейросеть) на продакшене
+
+Чтобы кнопка ✨ в таблице каналов работала на https://career-hub-report.vercel.app:
+
+1. Зайдите в [vercel.com](https://vercel.com) → ваш проект **career-hub-report**.
+2. **Settings** → **Environment Variables**.
+3. Добавьте переменную:
+   - **Name:** `OPENAI_API_KEY`
+   - **Value:** ваш ключ OpenAI (начинается с `sk-...`).
+   - **Environment:** Production (и при желании Preview).
+4. Сохраните и сделайте **Redeploy** последнего деплоя (Deployments → ⋯ у нужного деплоя → Redeploy).
+
+Запросы к `/api/generate-channel-insight` обрабатываются серверной функцией из `api/generate-channel-insight.js` (ESM, `export default function handler`). Ключ хранится только в Vercel и не попадает во фронтенд.
+
 ## 4. Дальнейшие обновления
 
 После изменений в коде:

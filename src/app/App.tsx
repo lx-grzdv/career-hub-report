@@ -723,7 +723,15 @@ const InsightModal = ({
         else if (!cancelled && !data?.content) setError('Пустой ответ от сервера');
       })
       .catch((e) => {
-        if (!cancelled) setError(e.message || 'Ошибка запроса');
+        if (!cancelled) {
+          const msg = e.message || 'Ошибка запроса';
+          const is404 = /NOT_FOUND|page could not be found|404/i.test(msg);
+          setError(
+            is404
+              ? 'API на Vercel не найден. Убедитесь, что папка api/ в репозитории, в Vercel задан OPENAI_API_KEY, и сделайте Redeploy.'
+              : msg
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

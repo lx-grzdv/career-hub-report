@@ -27,30 +27,30 @@ export const REPORT_START_DATETIME = '2026-02-09T11:00:00';
 export const REPORT_START_LABEL = '9 февраля 2026, 11:00';
 
 /** Дата и время снапшота экрана «Добавить папку» (ISO). */
-export const SNAPSHOT_DATETIME = '2026-02-10T02:16:39';
+export const SNAPSHOT_DATETIME = '2026-02-10T10:28:17';
 
 /** Дата снапшота (для подписи). */
 export const SNAPSHOT_DATE = '2026-02-10';
 
 /** Подпись для отчёта: дата и время снапшота. */
-export const SNAPSHOT_LABEL = '10 февраля 2026, 02:16';
+export const SNAPSHOT_LABEL = '10 февраля 2026, 10:28';
 
 /** Время снапшота для диапазона волны (как в «11:00 → 11:30»). */
-export const SNAPSHOT_TIME = '02:16';
+export const SNAPSHOT_TIME = '10:28';
 
 /** Номер волны для текущего среза данных (снапшота). При добавлении нового скрина увеличьте на 1. */
-export const SNAPSHOT_WAVE_NUMBER = 3;
+export const SNAPSHOT_WAVE_NUMBER = 4;
 
 /** Текущий срез данных по количеству участников (username без @). */
 export const snapshotMembers: Record<string, number> = {
-  prodtomorrow: 624,
+  prodtomorrow: 628,
   sshultse: 665,
   pxPerson_produced: 452,
   nix_ux_view: 580,
-  tooltipp: 452,
+  tooltipp: 456,
   trueredorescue: 639,
   DesignDictatorship: 835,
-  dsgn_thinking: 769,
+  dsgn_thinking: 772,
   visuaaaals: 687,
   kuntsevich_design: 922,
   lx_grzdv_links: 747,

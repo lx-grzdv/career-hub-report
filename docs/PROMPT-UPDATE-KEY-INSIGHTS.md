@@ -56,3 +56,7 @@ Update the "Ключевые инсайты" section in **report.html** using ON
 
 **OUTPUT:**  
 Return only the updated HTML fragment for the "Ключевые инсайты" section, or the full updated `report.html` with that section replaced, so it can be pasted into the project.
+
+---
+
+*Документация проекта: docs/PROJECT.md. Продакшен: https://career-hub-report.vercel.app*

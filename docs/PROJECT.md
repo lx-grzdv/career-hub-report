@@ -34,9 +34,12 @@
 ├── report.html             # Статическая версия отчёта (опционально)
 ├── package.json
 ├── vite.config.ts          # Прокси /api → localhost:3001
+├── vercel.json             # Rewrites: /api/(.*) → /api/$1; /(.*) → /index.html
 ├── .env, .env.example
+├── api/
+│   └── generate-channel-insight.js  # Vercel Serverless: инсайты по каналу (продакшен)
 ├── server/
-│   └── index.js            # API: инсайты по каналу, health
+│   └── index.js            # Локальный API при npm run dev (порт 3001)
 ├── scripts/
 │   ├── generate-conclusion.ts   # Генерация вывода (conclusion.ts)
 │   ├── generate-channel-insight.ts  # CLI: инсайт по одному каналу
@@ -106,9 +109,11 @@
 
 ---
 
-## 7. API (server/index.js)
+## 7. API
 
-Запуск: `node server/index.js` (порт по умолчанию 3001). Vite в dev проксирует запросы с пути `/api` на этот сервер.
+**Локально (npm run dev):** запросы к `/api` проксируются на `server/index.js` (порт 3001).
+
+**На Vercel (продакшен):** запросы к `/api/generate-channel-insight` обрабатывает серверная функция из `api/generate-channel-insight.js` (ESM, `export default function handler`). Файл `vercel.json` задаёт rewrites: `/api/(.*)` → `/api/$1`, затем `/(.*)` → `/index.html`, чтобы маршруты `/api/*` не перехватывались SPA. Чтобы инсайты работали на career-hub-report.vercel.app, в Vercel добавьте переменную окружения `OPENAI_API_KEY` (см. DEPLOY.md).
 
 | Метод | Путь | Назначение |
 |-------|------|------------|
@@ -151,4 +156,4 @@
 
 ---
 
-*Последнее обновление: февраль 2026.*
+*Последнее обновление: февраль 2026. Деплой: https://career-hub-report.vercel.app*
