@@ -1,5 +1,5 @@
 import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from 'motion/react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell, ReferenceLine } from 'recharts';
 import { Tooltip as TooltipUI, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 import {
   HelpCircle,
@@ -629,6 +629,8 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
   );
 };
 
+const ANALYST_PROFILE = `Наблюдения и размышления о своём пути: с чем работаешь и сталкиваешься, короткие заметки, иногда грусть. Фокус на «через человека», а не только советы: как личность проявляется в профдеятельности и как с этим живёт автор. Параллельно — событийная оптика и лайфстайл-формат.`;
+
 const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram‑каналов внутри ОДНОЙ папки. Дай короткий, «человеческий» разбор ОДНОГО канала по числам. Без канцелярита и без воды.
 
 ВХОДНЫЕ ДАННЫЕ:
@@ -637,19 +639,22 @@ const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram‑
 - SNAPSHOT_DATA — строки вида "@chan: latest=..." (последний срез)
 - OPTIONAL_PROFILE (может отсутствовать) — 1–3 предложения описания канала (субъективная характеристика автора)
 - FOLDER_CHANNELS — список всех каналов папки (включая TARGET_CHANNEL)
+- ANALYST_PROFILE — мой оценочный портрет (как я обычно смотрю на каналы папки)
 
 КЛЮЧЕВАЯ ИДЕЯ:
 Твоя задача — аккуратно описать, ЧТО видно в данных и ЧЕМ канал отличается от фона папки. Не придумывай мотивацию людей и «универсальные советы».
+Опирайся на ANALYST_PROFILE: смотри на каналы через эту оптику и язык, но не пересказывай и не цитируй его напрямую — это внутренний профиль автора отчёта.
 
 СТРОГИЕ ПРАВИЛА:
-1) Не давать рекомендации и «что делать». Вообще. Никаких action items.
-2) Никаких определений терминов.
-3) Не придумывать факты. Если данных не хватает — напиши «н/д».
-4) Каждый вывод в секциях C и D должен содержать минимум 2 числа (например: "+44 и +23", "6/12 и +16.2%").
-5) Обязательно джойни BASELINE_DATA и SNAPSHOT_DATA по каналу и построй ряд:
+1) В блоках A–D не давать прямых советов «что делать» (никаких action items про контент‑план, форматы, регулярность).
+2) В блоке E) «Поддержка и мотивация» можно дать мягкие советы и поддержку автору: как не выгорать, не бояться постить, ценить личные посты и живой голос. Не уходи в чек‑листы и жёсткие рецепты.
+3) Никаких определений терминов.
+4) Не придумывать факты. Если данных не хватает — напиши «н/д».
+5) Каждый вывод в секциях C и D должен содержать минимум 2 числа (например: "+44 и +23", "6/12 и +16.2%").
+6) Обязательно джойни BASELINE_DATA и SNAPSHOT_DATA по каналу и построй ряд:
    T0=base(11:00), T1=11:30, T2=15:30, T3=18:06, T4=latest.
-6) Санити‑чек: Total = T4 − T0. Если не сходится — напиши «конфликт данных» и больше ничего не анализируй.
-7) Про «рабочее время/фон дня» можно писать ТОЛЬКО если ты сравнил окно с фоном папки (например, среднее по Δ23). Без такого сравнения не делай выводов про поведение людей.
+7) Санити‑чек: Total = T4 − T0. Если не сходится — напиши «конфликт данных» и больше ничего не анализируй.
+8) Про «рабочее время/фон дня» можно писать ТОЛЬКО если ты сравнил окно с фоном папки (например, среднее по Δ23). Без такого сравнения не делай выводов про поведение людей.
 
 ЧТО СЧИТАТЬ (обязательно, если есть данные):
 - Δ01 = T1 − T0 (11:00→11:30)
@@ -665,10 +670,17 @@ const CHANNEL_INSIGHT_PROMPT = `Ты — аналитик роста Telegram‑
 
 ФОРМАТ ВЫХОДА (строго, только эти секции):
 A) TL;DR — 1 предложение: место по Total, Total и %, и главная особенность профиля (где сделан рост).
-B) Метрики — 8–12 коротких строк (base→latest, Total, Growth%, Δ01/Δ12/Δ23/Δ34, доли, RankTotal, RankTail, сравнение Δ23 с фоном папки).
-C) Инсайты — 3–5 буллетов: что видно по каналу и чем он отличается от фона/соседей (везде цифры).
-D) Гипотезы — 2–3 буллета: только аккуратные гипотезы, которые действительно следуют из профиля по окнам и OPTIONAL_PROFILE (если дан).
-F) Контекст сравнения — 3–4 строки: соседи выше/ниже по Total (канал и число), и кто в топ‑3 по Total.
+B) Метрики — 8–12 коротких строк с понятными подписями. Форматируй по‑человечески, например:
+   - «Старт → финал: 734 → 844»
+   - «Итого рост: +110 (+15.0%)»
+   - «Утро (11:00→11:30): +48»
+   - «День (11:30→15:30): +33»
+   - «Рабочее окно (15:30→18:06): +8»
+   - «Вечер/хвост (18:06→latest): +21»
+   Добавь ранги и доли, но всегда расшифровывай окна словами, не только через Δ‑обозначения.
+C) Инсайты — 3–5 буллетов: что видно по каналу и чем он отличается от фона/соседей (везде цифры). Если упоминаешь окна (утро/день/рабочее/вечер), всегда поясняй их словами, а не только через Δ01/Δ12/Δ23/Δ34.
+D) Гипотезы — 2–3 буллета: аккуратные предположения про то, почему кривая выглядит так (тайминг поста, формат, пересечение аудиторий, инерция, личный голос и т.п.). В каждом пункте явно пиши, к какому фрагменту кривой (какому окну) относится гипотеза.
+E) Поддержка и мотивация — 2–4 строки с ободрением и мягкими советами продолжать вести канал, опираясь на форму кривой и ANALYST_PROFILE. Нормализуй страх постить, блок после папок, ощущение, что личные посты «важнее пользы» и т.п.; никакой вины и давления.
 
 ДАННЫЕ:
 TARGET_CHANNEL:
@@ -676,6 +688,9 @@ TARGET_CHANNEL:
 
 OPTIONAL_PROFILE:
 <<<OPTIONAL_PROFILE>>>
+
+ANALYST_PROFILE:
+<<<ANALYST_PROFILE>>>
 
 FOLDER_CHANNELS:
 <<<FOLDER_CHANNELS>>>
@@ -704,6 +719,7 @@ function buildChannelInsightPrompt(
   const optionalSnapshots = allChannelData.map((r) => `${r.channel}: 11:30=${r.wave1}, 15:30=${r.wave2}, 18:06=${r.current}`).join('\n');
   return CHANNEL_INSIGHT_PROMPT.replace('<<<TARGET_CHANNEL>>>', targetRow.channel)
     .replace('<<<OPTIONAL_PROFILE>>>', optionalProfile || 'н/д')
+    .replace('<<<ANALYST_PROFILE>>>', ANALYST_PROFILE)
     .replace('<<<FOLDER_CHANNELS>>>', folderChannels)
     .replace('<<<BASELINE_DATA>>>', baselineData)
     .replace('<<<SNAPSHOT_DATA>>>', snapshotData)
@@ -811,13 +827,15 @@ const InsightModal = ({
         onClick={(e) => e.stopPropagation()}
         className="relative bg-black border border-white/20 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-white/20 flex-shrink-0">
-          <h3 className="text-xl font-light">Инсайты по каналу {channel}</h3>
+        <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 border-b border-white/20 flex-shrink-0 bg-black/80 backdrop-blur">
+          <h3 className="text-lg md:text-xl font-light tracking-tight">
+            Инсайты по каналу <span className="text-white/70">{channel}</span>
+          </h3>
           <button type="button" onClick={onClose} className="text-white/60 hover:text-white transition-colors p-1">
             ✕
           </button>
         </div>
-        <div className="p-4 overflow-y-auto flex-1 min-h-0 space-y-4">
+        <div className="p-4 md:p-5 overflow-y-auto flex-1 min-h-0 space-y-5">
           {loading && (
             <div className="flex items-center justify-center gap-3 py-12 text-white/60">
               <motion.span
@@ -845,17 +863,108 @@ const InsightModal = ({
             </div>
           )}
           {content && !loading && (
-            <div className="space-y-3">
-              {parsed.length > 0 ? (
-                parsed.map(({ section, content: sectionContent }) => (
-                  <div key={section}>
-                    <div className="text-xs text-white/40 uppercase tracking-wider mb-1">{section}</div>
-                    <div className="text-sm text-white/80 whitespace-pre-wrap">{sectionContent}</div>
+            <div className="space-y-4 md:space-y-5">
+              {parsed.length > 0
+                ? parsed.map(({ section, content: sectionContent }) => {
+                    const raw = (section || '').trim();
+                    const upper = raw.toUpperCase();
+
+                    let variant: 'tldr' | 'metrics' | 'insights' | 'hypotheses' | 'support' | 'other' = 'other';
+                    if (upper.startsWith('A') || upper.includes('TL;DR')) {
+                      variant = 'tldr';
+                    } else if (upper.startsWith('B') || upper.includes('МЕТРИК')) {
+                      variant = 'metrics';
+                    } else if (upper.startsWith('C') || upper.includes('ИНСАЙТ')) {
+                      variant = 'insights';
+                    } else if (upper.startsWith('D') || upper.includes('ГИПОТЕ')) {
+                      variant = 'hypotheses';
+                    } else if (upper.startsWith('E') || upper.includes('МОТИВА') || upper.includes('ПОДДЕРЖ')) {
+                      variant = 'support';
+                    }
+
+                    let titleLabel = raw;
+                    if (variant === 'tldr') titleLabel = 'A) TL;DR';
+                    if (variant === 'metrics') titleLabel = 'Метрики';
+                    if (variant === 'insights') titleLabel = 'Инсайты';
+                    if (variant === 'hypotheses') titleLabel = 'Гипотезы';
+                    if (variant === 'support') titleLabel = 'Поддержка и мотивация';
+
+                    // Чистим дублирующие заголовки внутри текста (TL;DR, Метрики — и т.п.)
+                    let cleanedContent = sectionContent.trim();
+                    if (variant === 'tldr') {
+                      cleanedContent = cleanedContent
+                        .replace(/^A\)\s*TL;?\s*;?\s*DR\s*[-—]\s*/i, '')
+                        .replace(/^TL;?\s*;?\s*DR\s*[-—]\s*/i, '');
+                    } else if (variant === 'metrics') {
+                      cleanedContent = cleanedContent.replace(/^МЕТРИКИ\s*[:\-—]\s*/i, '');
+                    } else if (variant === 'insights') {
+                      cleanedContent = cleanedContent.replace(/^ИНСАЙТЫ\s*[:\-—]\s*/i, '');
+                    } else if (variant === 'hypotheses') {
+                      cleanedContent = cleanedContent.replace(/^ГИПОТЕЗЫ\s*[:\-—]\s*/i, '');
+                    } else if (variant === 'support') {
+                      cleanedContent = cleanedContent.replace(/^ПОДДЕРЖКА.*?\s*(?:—|-|:)\s*/i, '');
+                    }
+
+                    const lines = cleanedContent
+                      .split(/\r?\n/)
+                      .map((l) => l.trimEnd())
+                      .filter((l) => l.trim().length > 0);
+
+                    const bodyBaseClass =
+                      'whitespace-pre-wrap leading-relaxed';
+
+                    const bodyClass =
+                      variant === 'tldr'
+                        ? `${bodyBaseClass} text-sm md:text-[15px] text-white`
+                        : `${bodyBaseClass} text-sm md:text-[15px] text-white/85`;
+
+                    const wrapperClass =
+                      variant === 'tldr'
+                        ? 'border border-white/15 rounded-xl px-3.5 py-3.5 md:px-4 md:py-4 bg-white/[0.02]'
+                        : 'border border-white/10 rounded-xl px-3.5 py-3 md:px-4 md:py-3.5 bg-black/60';
+
+                    let bodyNode: React.ReactNode;
+                    if (variant === 'metrics' || variant === 'insights' || variant === 'hypotheses') {
+                      const isMetrics = variant === 'metrics';
+                      bodyNode = (
+                        <ul
+                          className={
+                            (isMetrics
+                              ? 'font-mono text-xs md:text-[13px] text-white/85 bg-white/[0.03] rounded-xl px-3.5 py-3 md:px-4 md:py-3.5 '
+                              : 'text-sm md:text-[15px] text-white/85 ') + 'space-y-1.5 md:space-y-2 list-none m-0'
+                          }
+                        >
+                          {lines.map((line, idx) => {
+                            const trimmed = line.trim();
+                            const isBullet = /^[-•]/.test(trimmed);
+                            const text = isBullet ? trimmed.replace(/^[-•]\s*/, '') : trimmed;
+                            return (
+                              <li key={idx} className="relative pl-4">
+                                <span className="absolute left-0 top-2 w-1.5 h-1.5 rounded-full bg-white/50" />
+                                <span className="align-middle">{text}</span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      );
+                    } else {
+                      bodyNode = <div className={bodyClass}>{cleanedContent}</div>;
+                    }
+
+                    return (
+                      <div key={section} className={wrapperClass}>
+                        <div className="text-[10px] md:text-xs text-white/40 uppercase tracking-[0.25em] mb-2">
+                          {titleLabel}
+                        </div>
+                        {bodyNode}
+                      </div>
+                    );
+                  })
+                : (
+                  <div className="text-sm md:text-[15px] text-white/80 whitespace-pre-wrap leading-relaxed">
+                    {content}
                   </div>
-                ))
-              ) : (
-                <div className="text-sm text-white/80 whitespace-pre-wrap">{content}</div>
-              )}
+                )}
             </div>
           )}
         </div>
@@ -1126,7 +1235,6 @@ User-Agent: ${navigator.userAgent}
   const folderFadeSignals = useMemo(() => {
     const rows = channelData;
     const tail = rows.map((r) => r.growth3 ?? 0);
-    const totals = rows.map((r) => r.total ?? 0);
     const tailSum = tail.reduce((a, b) => a + b, 0);
 
     const tailShares = rows.map((r) => {
@@ -1179,6 +1287,171 @@ User-Agent: ${navigator.userAgent}
       tailTop3Share,
       bene,
       donor,
+    };
+  }, [channelData]);
+
+  /** Суммарная кривая роста папки по волнам с учётом пересечений аудитории (stacked по типам). */
+  const folderWaveTimeline = useMemo(() => {
+    if (!channelData.length) {
+      return {
+        points: [] as {
+          id: string;
+          label: string;
+          title: string;
+          beneficiary: number;
+          stable: number;
+          donor: number;
+          total: number;
+          beneficiaryDelta: number;
+          stableDelta: number;
+          donorDelta: number;
+          totalDelta: number;
+        }[],
+        totalGrowth: 0,
+        wave1Growth: 0,
+        wave2Growth: 0,
+        wave3Growth: 0,
+        tailGrowth: 0,
+        beneficiaryTotalGrowth: 0,
+        stableTotalGrowth: 0,
+        donorTotalGrowth: 0,
+      };
+    }
+
+    const sumByType = (
+      type: 'beneficiary' | 'donor' | 'stable',
+      selector: (row: (typeof channelData)[number]) => number
+    ) => {
+      return channelData
+        .filter((r) => r.type === type)
+        .reduce((acc, row) => acc + selector(row), 0);
+    };
+
+    const getValue = (row: (typeof channelData)[number], stage: 'base' | 'wave1' | 'wave2' | 'current' | 'final') => {
+      switch (stage) {
+        case 'base':
+          return row.base ?? 0;
+        case 'wave1':
+          return row.wave1 ?? row.base ?? 0;
+        case 'wave2':
+          return row.wave2 ?? row.wave1 ?? row.base ?? 0;
+        case 'current':
+          return row.current ?? row.wave2 ?? row.wave1 ?? row.base ?? 0;
+        case 'final':
+          return row.final ?? row.current ?? row.wave2 ?? row.wave1 ?? row.base ?? 0;
+        default:
+          return 0;
+      }
+    };
+
+    const baseBene = sumByType('beneficiary', (r) => getValue(r, 'base'));
+    const baseStable = sumByType('stable', (r) => getValue(r, 'base'));
+    const baseDonor = sumByType('donor', (r) => getValue(r, 'base'));
+
+    const t1Bene = sumByType('beneficiary', (r) => getValue(r, 'wave1'));
+    const t1Stable = sumByType('stable', (r) => getValue(r, 'wave1'));
+    const t1Donor = sumByType('donor', (r) => getValue(r, 'wave1'));
+
+    const t2Bene = sumByType('beneficiary', (r) => getValue(r, 'wave2'));
+    const t2Stable = sumByType('stable', (r) => getValue(r, 'wave2'));
+    const t2Donor = sumByType('donor', (r) => getValue(r, 'wave2'));
+
+    const t3Bene = sumByType('beneficiary', (r) => getValue(r, 'current'));
+    const t3Stable = sumByType('stable', (r) => getValue(r, 'current'));
+    const t3Donor = sumByType('donor', (r) => getValue(r, 'current'));
+
+    const t4Bene = sumByType('beneficiary', (r) => getValue(r, 'final'));
+    const t4Stable = sumByType('stable', (r) => getValue(r, 'final'));
+    const t4Donor = sumByType('donor', (r) => getValue(r, 'final'));
+
+    const points = [
+      {
+        id: 'T0',
+        label: '11:00',
+        title: 'Старт (11:00)',
+        beneficiary: baseBene,
+        stable: baseStable,
+        donor: baseDonor,
+        total: baseBene + baseStable + baseDonor,
+        beneficiaryDelta: 0,
+        stableDelta: 0,
+        donorDelta: 0,
+        totalDelta: 0,
+      },
+      {
+        id: 'T1',
+        label: '11:30',
+        title: 'Волна 1 (11:00→11:30)',
+        beneficiary: t1Bene,
+        stable: t1Stable,
+        donor: t1Donor,
+        total: t1Bene + t1Stable + t1Donor,
+        beneficiaryDelta: t1Bene - baseBene,
+        stableDelta: t1Stable - baseStable,
+        donorDelta: t1Donor - baseDonor,
+        totalDelta: t1Bene + t1Stable + t1Donor - (baseBene + baseStable + baseDonor),
+      },
+      {
+        id: 'T2',
+        label: '15:30',
+        title: 'Волна 2 (11:30→15:30)',
+        beneficiary: t2Bene,
+        stable: t2Stable,
+        donor: t2Donor,
+        total: t2Bene + t2Stable + t2Donor,
+        beneficiaryDelta: t2Bene - t1Bene,
+        stableDelta: t2Stable - t1Stable,
+        donorDelta: t2Donor - t1Donor,
+        totalDelta: t2Bene + t2Stable + t2Donor - (t1Bene + t1Stable + t1Donor),
+      },
+      {
+        id: 'T3',
+        label: '18:06',
+        title: 'Срез перед хвостом (15:30→18:06)',
+        beneficiary: t3Bene,
+        stable: t3Stable,
+        donor: t3Donor,
+        total: t3Bene + t3Stable + t3Donor,
+        beneficiaryDelta: t3Bene - t2Bene,
+        stableDelta: t3Stable - t2Stable,
+        donorDelta: t3Donor - t2Donor,
+        totalDelta: t3Bene + t3Stable + t3Donor - (t2Bene + t2Stable + t2Donor),
+      },
+      {
+        id: 'T4',
+        label: SNAPSHOT_TIME,
+        title: `Снапшот (${SNAPSHOT_TIME})`,
+        beneficiary: t4Bene,
+        stable: t4Stable,
+        donor: t4Donor,
+        total: t4Bene + t4Stable + t4Donor,
+        beneficiaryDelta: t4Bene - t3Bene,
+        stableDelta: t4Stable - t3Stable,
+        donorDelta: t4Donor - t3Donor,
+        totalDelta: t4Bene + t4Stable + t4Donor - (t3Bene + t3Stable + t3Donor),
+      },
+    ];
+
+    const beneficiaryTotalGrowth = t4Bene - baseBene;
+    const stableTotalGrowth = t4Stable - baseStable;
+    const donorTotalGrowth = t4Donor - baseDonor;
+    const totalGrowth = beneficiaryTotalGrowth + stableTotalGrowth + donorTotalGrowth;
+
+    const wave1Growth = points[1].totalDelta;
+    const wave2Growth = points[2].totalDelta;
+    const wave3Growth = points[3].totalDelta;
+    const tailGrowth = points[4].totalDelta;
+
+    return {
+      points,
+      totalGrowth,
+      wave1Growth,
+      wave2Growth,
+      wave3Growth,
+      tailGrowth,
+      beneficiaryTotalGrowth,
+      stableTotalGrowth,
+      donorTotalGrowth,
     };
   }, [channelData]);
 
@@ -1830,6 +2103,184 @@ User-Agent: ${navigator.userAgent}
               Это не «истина», а чтение формы кривой роста. Мы видим только подписчиков по волнам (без источников и просмотров),
               поэтому ниже — сигналы, что папка уже дала основной импульс, а дальше рост чаще объясняется собственным постингом и инерцией.
             </motion.p>
+
+            {/* Aggregated growth curve for the whole folder */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.08 }}
+              className="mb-10 border border-white/20 p-4 md:p-8 bg-gradient-to-br from-white/[0.02] to-transparent rounded-lg"
+            >
+              <div className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                  <h4 className="text-xl md:text-2xl font-light mb-2">Общая кривая роста папки с учётом пересечений</h4>
+                  <p className="text-sm text-white/60 max-w-2xl">
+                    Суммарные подписчики по типам каналов в ключевые моменты дня. Цвета показывают, кто получает рост:
+                    зелёный — бенефициары (низкий overlap), белый — стабильные, красный — доноры (высокий overlap).
+                  </p>
+                </div>
+                <div className="text-xs text-white/50 space-y-1">
+                  <div>
+                    <span className="text-white/70">Итого рост:</span>{' '}
+                    <span className="text-white/90 font-medium">+{folderWaveTimeline.totalGrowth.toLocaleString('ru-RU')}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded bg-green-500/60"></div>
+                    <span className="text-white/50">Бенефициары:</span>{' '}
+                    <span className="text-white/80">+{folderWaveTimeline.beneficiaryTotalGrowth.toLocaleString('ru-RU')}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded bg-white/40"></div>
+                    <span className="text-white/50">Стабильные:</span>{' '}
+                    <span className="text-white/80">+{folderWaveTimeline.stableTotalGrowth.toLocaleString('ru-RU')}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded bg-red-500/60"></div>
+                    <span className="text-white/50">Доноры:</span>{' '}
+                    <span className="text-white/80">+{folderWaveTimeline.donorTotalGrowth.toLocaleString('ru-RU')}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+                <div className="min-w-[320px]">
+                  <ResponsiveContainer width="100%" height={isSmallMobile ? 260 : isMobile ? 320 : 360}>
+                    <AreaChart
+                      data={folderWaveTimeline.points}
+                      margin={{
+                        top: 20,
+                        right: isMobile ? 10 : 40,
+                        left: isMobile ? 40 : 60,
+                        bottom: isMobile ? 40 : 50,
+                      }}
+                    >
+                      <defs>
+                        <linearGradient id="folderCurveBene" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.6} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="folderCurveStable" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.5} />
+                          <stop offset="95%" stopColor="#ffffff" stopOpacity={0.15} />
+                        </linearGradient>
+                        <linearGradient id="folderCurveDonor" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity={0.6} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0.2} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(255,255,255,0.08)"
+                        horizontal={true}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        stroke="rgba(255,255,255,0.4)"
+                        style={{ fontSize: isMobile ? '10px' : '12px' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        stroke="rgba(255,255,255,0.4)"
+                        style={{ fontSize: isMobile ? '10px' : '12px' }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => value.toLocaleString('ru-RU')}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: '#666', strokeWidth: 1 }}
+                        contentStyle={{
+                          backgroundColor: '#000',
+                          border: '1px solid #444',
+                          borderRadius: 8,
+                          color: '#fff',
+                          fontSize: 13,
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const label =
+                            name === 'beneficiary'
+                              ? 'Бенефициары'
+                              : name === 'stable'
+                                ? 'Стабильные'
+                                : name === 'donor'
+                                  ? 'Доноры'
+                                  : 'Всего';
+                          return [`${value.toLocaleString('ru-RU')} подписчиков`, label];
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (!payload || !payload.length) return label;
+                          const p = payload[0]?.payload as {
+                            title: string;
+                            beneficiaryDelta: number;
+                            stableDelta: number;
+                            donorDelta: number;
+                            totalDelta: number;
+                          } | undefined;
+                          if (!p) return label;
+                          if (p.totalDelta === 0) return 'Стартовое значение (до прироста)';
+                          return (
+                            <div>
+                              <div className="font-medium mb-1">{p.title}</div>
+                              <div className="text-xs space-y-0.5">
+                                {p.beneficiaryDelta > 0 && (
+                                  <div className="text-green-400">
+                                    Бенефициары: +{p.beneficiaryDelta.toLocaleString('ru-RU')}
+                                  </div>
+                                )}
+                                {p.stableDelta > 0 && (
+                                  <div className="text-white/70">
+                                    Стабильные: +{p.stableDelta.toLocaleString('ru-RU')}
+                                  </div>
+                                )}
+                                {p.donorDelta > 0 && (
+                                  <div className="text-red-400">Доноры: +{p.donorDelta.toLocaleString('ru-RU')}</div>
+                                )}
+                                <div className="text-white/90 pt-1 border-t border-white/10 mt-1">
+                                  Всего: +{p.totalDelta.toLocaleString('ru-RU')}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      {/* Stacked areas: donor (bottom), stable (middle), beneficiary (top) */}
+                      <Area
+                        type="monotone"
+                        dataKey="donor"
+                        stackId="1"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        fill="url(#folderCurveDonor)"
+                        isAnimationActive={!prefersReducedMotion}
+                        animationDuration={isMobile ? 300 : 800}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="stable"
+                        stackId="1"
+                        stroke="#ffffff"
+                        strokeWidth={2}
+                        fill="url(#folderCurveStable)"
+                        isAnimationActive={!prefersReducedMotion}
+                        animationDuration={isMobile ? 300 : 800}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="beneficiary"
+                        stackId="1"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fill="url(#folderCurveBene)"
+                        dot={{ fill: '#10b981', r: 4, strokeWidth: 1.5, stroke: '#000' }}
+                        activeDot={{ r: 6, fill: '#10b981' }}
+                        isAnimationActive={!prefersReducedMotion}
+                        animationDuration={isMobile ? 300 : 800}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch">
               <InsightCard
