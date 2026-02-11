@@ -79,6 +79,8 @@ git remote set-url origin https://github.com/ВАШ_USERNAME/ИМЯ_РЕПО.git
 
 Запросы к `/api/generate-channel-insight` обрабатываются серверной функцией из `api/generate-channel-insight.js` (ESM, `export default function handler`). Ключ хранится только в Vercel и не попадает во фронтенд.
 
+Та же переменная `OPENAI_API_KEY` используется для кнопки **«Обновить по скрину»**: запросы к `/api/parse-snapshot-image` обрабатывает `api/parse-snapshot-image.js`. После добавления ключа и Redeploy оба функции (инсайты и разбор скриншота) работают на продакшене.
+
 ## 4. Дальнейшие обновления
 
 После изменений в коде:

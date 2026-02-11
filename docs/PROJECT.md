@@ -121,13 +121,13 @@
 
 **Локально (npm run dev):** запросы к `/api` проксируются на `server/index.js` (порт 3001).
 
-**На Vercel (продакшен):** запросы к `/api/generate-channel-insight` обрабатывает серверная функция из `api/generate-channel-insight.js` (ESM, `export default function handler`). Файл `vercel.json` задаёт rewrites: `/api/(.*)` → `/api/$1`, затем `/(.*)` → `/index.html`, чтобы маршруты `/api/*` не перехватывались SPA. Чтобы инсайты работали на career-hub-report.vercel.app, в Vercel добавьте переменную окружения `OPENAI_API_KEY` (см. DEPLOY.md).
+**На Vercel (продакшен):** запросы к `/api/generate-channel-insight` и `/api/parse-snapshot-image` обрабатывают серверные функции из `api/generate-channel-insight.js` и `api/parse-snapshot-image.js` (ESM, `export default function handler`). Файл `vercel.json` задаёт rewrites: `/api/(.*)` → `/api/$1`, затем `/(.*)` → `/index.html`. Чтобы инсайты и «Обновить по скрину» работали на career-hub-report.vercel.app, в Vercel добавьте переменную окружения `OPENAI_API_KEY` (см. DEPLOY.md).
 
 | Метод | Путь | Назначение |
 |-------|------|------------|
 | GET | `/api/health` | Проверка доступности API. Ответ: `{ "ok": true }`. |
 | POST | `/api/generate-channel-insight` | Тело: `{ "prompt": "..." }`. Генерация инсайта по каналу через OpenAI (gpt-4o-mini). Ответ: `{ "content": "..." }`. |
-| POST | `/api/parse-snapshot-image` | Тело: `{ "image": "<base64 или data URL>" }`. Распознавание скриншота «Добавить папку» через OpenAI Vision и возврат `{ "members": { "username": number, ... } }`. В текущей версии UI кнопки загрузки скриншота нет; эндпоинт можно использовать для скриптов или будущего функционала. |
+| POST | `/api/parse-snapshot-image` | Тело: `{ "image": "<base64 или data URL>" }`. Распознавание скриншота «Добавить папку» через OpenAI Vision, возврат `{ "members": { "username": number, ... } }`. Вызывается кнопкой «Обновить по скрину» в UI. |
 
 Для всех POST-маршрутов нужен `OPENAI_API_KEY` в `.env`.
 
@@ -166,4 +166,4 @@
 
 ---
 
-*Последнее обновление: февраль 2026. Деплой: https://career-hub-report.vercel.app*
+*Последнее обновление: 11 февраля 2026. Деплой: https://career-hub-report.vercel.app*
