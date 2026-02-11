@@ -20,6 +20,7 @@ import { PerformanceMonitor } from './components/PerformanceMonitor';
 import { LazySection } from './components/LazySection';
 import { LoadingScreen } from './components/LoadingScreen';
 import {
+  SNAPSHOTS,
   snapshotMembers,
   SNAPSHOT_LABEL,
   SNAPSHOT_TIME,
@@ -31,6 +32,8 @@ import {
 import { BASE_CHANNEL_DATA } from '../data/channelBase';
 import { CHANNEL_PROFILES } from '../data/channelProfiles';
 import { CONCLUSION, CONCLUSION_GENERATED_AT } from '../data/conclusion';
+import { SummaryPage } from './SummaryPage';
+import { ChartModal } from './components/ChartModal';
 
 // Performance optimizations for mobile
 const isMobile = typeof window !== 'undefined' 
@@ -76,6 +79,14 @@ function fmtSignedInt(x: number): string {
   return v > 0 ? `+${fmtInt(v)}` : fmtInt(v);
 }
 
+/** Формат даты и времени для подписей срезов: "9 фев 11:34". */
+function formatDateTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  const datePart = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace(/\.\s*$/, '');
+  const timePart = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart} ${timePart}`;
+}
+
 type TableSortKey =
   | 'channel'
   | 'base'
@@ -86,7 +97,9 @@ type TableSortKey =
   | 'growth1'
   | 'growth2'
   | 'growth3'
-  | 'total';
+  | 'total'
+  | `slice_${number}`
+  | `growthToSlice_${number}`;
 
 type TableSortDir = 'asc' | 'desc';
 
@@ -205,178 +218,88 @@ const InsightCard = ({
   </motion.div>
 );
 
-const ChartModal = memo(({
-  data,
-  channel,
+/** Модалка со скриншотом среза по клику на заголовок колонки «Срез (HH:MM)». */
+const SliceScreenshotModal = memo(({
+  label,
+  time,
+  waveNumber,
+  imageUrl,
   onClose,
-  snapshotWaveNumber,
 }: {
-  data: { time: string; value: number }[];
-  channel: string;
+  label: string;
+  time: string;
+  waveNumber: number;
+  imageUrl: string | null;
   onClose: () => void;
-  snapshotWaveNumber: number;
 }) => {
-  const maxValue = useMemo(() => Math.max(...data.map(d => d.value)), [data]);
-  const minValue = useMemo(() => Math.min(...data.map(d => d.value)), [data]);
-  const range = useMemo(() => maxValue - minValue, [maxValue, minValue]);
-  const totalGrowth = useMemo(() => data[data.length - 1].value - data[0].value, [data]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    // Block scroll
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    
-    const handleEsc = (e: KeyboardEvent) => {
+    setLoadError(false);
+  }, [imageUrl]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    window.addEventListener('keydown', handleEsc);
-    
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener('keydown', handleEsc);
-    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
+
+  const showImage = imageUrl && !loadError;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+      <div
         className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+        aria-hidden
       />
-
-      {/* Modal Content */}
       <motion.div
-        initial={isMobile ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 40 }}
-        animate={isMobile ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: isMobile ? 0.2 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative bg-black border border-white/20 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden"
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        className="relative bg-black border border-white/20 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="border-b border-white/20 p-6 md:p-8">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs text-white/40 uppercase tracking-wider mb-2">График роста</div>
-              <h3 className="text-2xl md:text-4xl font-light tracking-tight mb-4">{channel}</h3>
-              <div className="flex items-center gap-6">
-                <div>
-                  <div className="text-xs text-white/40 mb-1">База</div>
-                  <div className="text-xl md:text-2xl tabular-nums">{fmtInt(data[0].value)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-white/40 mb-1">Прирост</div>
-                  <div className="text-xl md:text-2xl text-green-500 tabular-nums">{fmtSignedInt(totalGrowth)}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-white/40 mb-1">Сейчас</div>
-                  <div className="text-xl md:text-2xl tabular-nums">{fmtInt(data[data.length - 1].value)}</div>
-                </div>
-              </div>
+        <div className="border-b border-white/20 p-4 md:p-6 flex items-center justify-between flex-shrink-0">
+          <div>
+            <div className="text-xs text-white/40 uppercase tracking-wider">Срез данных</div>
+            <h3 className="text-lg md:text-xl font-light">{label} · Волна {waveNumber}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-white/60 hover:text-white transition-colors p-2"
+            aria-label="Закрыть"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-4 md:p-6 overflow-auto flex-1 min-h-0 flex items-center justify-center">
+          {showImage ? (
+            <img
+              src={imageUrl!}
+              alt={`Скриншот среза ${time}`}
+              className="max-w-full max-h-[70vh] w-auto h-auto object-contain rounded-lg"
+              onError={() => setLoadError(true)}
+            />
+          ) : (
+            <div className="text-center text-white/50 py-12">
+              <p className="text-sm md:text-base">
+                {imageUrl && loadError ? 'Не удалось загрузить скриншот (проверьте путь или обновите страницу).' : 'Скриншот для этого среза не добавлен.'}
+              </p>
+              <p className="text-xs mt-2 text-white/40">Для срезов из snapshot.ts укажите <code className="bg-white/10 px-1 rounded">screenshotUrl</code>. Загруженный через «Обновить по скрину» срез покажет скрин в этой модалке.</p>
             </div>
-            <motion.button
-              whileHover={!isMobile ? { scale: 1.1, rotate: 90 } : undefined}
-              whileTap={{ scale: 0.9 }}
-              onClick={onClose}
-              className="text-white/60 hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </motion.button>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <div className="p-6 md:p-8">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data} margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
-              <defs>
-                <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#fff" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#fff" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-              <XAxis 
-                dataKey="time" 
-                stroke="#666" 
-                style={{ fontSize: '14px' }}
-                tickLine={false}
-              />
-              <YAxis 
-                stroke="#666" 
-                style={{ fontSize: '14px' }}
-                domain={[minValue - range * 0.1, maxValue + range * 0.1]}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#000',
-                  border: '1px solid #444',
-                  borderRadius: '8px',
-                  color: '#fff',
-                  fontSize: '14px'
-                }}
-                cursor={{ stroke: '#666', strokeWidth: 1 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#fff"
-                strokeWidth={3}
-                fill="url(#colorGradient)"
-                dot={{ fill: '#fff', r: 5, strokeWidth: 2, stroke: '#000' }}
-                activeDot={{ r: 7, fill: '#fff' }}
-                animationDuration={isMobile ? 300 : 800}
-                isAnimationActive={!prefersReducedMotion}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Timeline Details */}
-        <div className="border-t border-white/20 p-6 md:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {data.map((d, i) => (
-              <div
-                key={i}
-                className="text-center"
-              >
-                <div className="text-xs text-white/40 uppercase tracking-wider mb-2">
-                  {i === 0 && 'База'}
-                  {i === 1 && 'Волна 1'}
-                  {i === 2 && 'Волна 2'}
-                  {i === 3 && `Волна ${snapshotWaveNumber}`}
-                  {i === 4 && `Волна ${snapshotWaveNumber} (финал)`}
-                </div>
-                <div className="text-sm text-white/60 mb-2">{d.time}</div>
-                <div className="text-2xl md:text-3xl font-light tabular-nums">{fmtInt(d.value)}</div>
-                {i > 0 && (
-                  <div className="text-sm text-green-500 mt-1">
-                    {fmtSignedInt(d.value - data[i - 1].value)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Close hint */}
-        <div className="border-t border-white/20 p-4 text-center">
-          <p className="text-xs text-white/40">
-            Нажмите ESC или кликните вне окна, чтобы закрыть
-          </p>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -1016,33 +939,52 @@ const InsightModal = ({
   );
 };
 
+type SnapshotSliceForRow = { time: string; waveNumber: number; datetime: string };
+
+type TableValueColRow = { datetime: string; label: string; sortKey: string; valueKey: 'base' | 'wave1' | 'wave2' | 'current' | 'slice'; sliceIndex?: number };
+
 const TableRow = memo(({
   row,
   idx,
+  valueColumns,
   onGenerateInsight,
-  snapshotTime,
+  snapshotSlices,
   snapshotWaveNumber,
 }: {
   row: any;
   idx: number;
+  valueColumns: TableValueColRow[];
   onGenerateInsight?: (row: any) => void;
-  snapshotTime: string;
+  snapshotSlices: SnapshotSliceForRow[];
   snapshotWaveNumber: number;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
-  const chartData = useMemo(() => [
-    { time: '11:00', value: row.base },
-    { time: '11:30', value: row.wave1 },
-    { time: '15:30', value: row.wave2 },
-    { time: '18:06', value: row.current },
-    { time: snapshotTime, value: row.final },
-  ], [row.base, row.wave1, row.wave2, row.current, row.final, snapshotTime]);
 
-  // Simplified animations on mobile
+  const chartData = useMemo(() => {
+    const reportDate = REPORT_START_DATETIME.slice(0, 10);
+    const base = [
+      { time: '11:00', value: row.base, datetime: `${reportDate}T11:00:00`, role: 'base' as const },
+      { time: '11:30', value: row.wave1, datetime: `${reportDate}T11:30:00`, role: 'wave1' as const },
+      { time: '15:30', value: row.wave2, datetime: `${reportDate}T15:30:00`, role: 'wave2' as const },
+      { time: '18:06', value: row.current, datetime: `${reportDate}T18:06:00`, role: 'current' as const },
+    ];
+    const slices = row.slices ?? [row.final];
+    const slicePoints = slices.map((v: number, i: number) =>
+      snapshotSlices[i] ? { time: snapshotSlices[i].time, value: v, datetime: snapshotSlices[i].datetime, role: 'slice' as const } : null
+    ).filter(Boolean) as { time: string; value: number; datetime: string; role: 'slice' }[];
+    const combined = [...base, ...slicePoints].sort((a, b) => a.datetime.localeCompare(b.datetime));
+    const byDatetime = new Map<string, { time: string; value: number; role: string }>();
+    combined.forEach((p) => byDatetime.set(p.datetime, { time: p.time, value: p.value, role: p.role }));
+    return [...byDatetime.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dt, p]) => ({ time: formatDateTimeLabel(dt), value: p.value, role: p.role }));
+  }, [row.base, row.wave1, row.wave2, row.current, row.slices, row.final, snapshotSlices]);
+
   const animationProps = isMobile || prefersReducedMotion
     ? { initial: { opacity: 0 }, whileInView: { opacity: 1 }, transition: { duration: 0.2 } }
     : { initial: { opacity: 0 }, whileInView: { opacity: 1 }, transition: { delay: idx * 0.03 } };
+
+  const slices = row.slices ?? [row.final];
 
   return (
     <>
@@ -1085,24 +1027,42 @@ const TableRow = memo(({
             )}
           </div>
         </td>
-        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.base)}</td>
-        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.wave1)}</td>
-        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.wave2)}</td>
-        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.current)}</td>
-        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.final)}</td>
-        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth1)}</td>
-        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth2)}</td>
-        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth3)}</td>
-        <td className="py-4 px-4 text-right font-medium text-green-500 tabular-nums">{fmtSignedInt(row.total)}</td>
+        {(() => {
+          const values = valueColumns.map((col) =>
+            col.valueKey === 'slice' && col.sliceIndex !== undefined
+              ? (slices[col.sliceIndex] ?? row.current)
+              : col.valueKey === 'base'
+                ? row.base
+                : col.valueKey === 'wave1'
+                  ? row.wave1
+                  : col.valueKey === 'wave2'
+                    ? row.wave2
+                    : row.current
+          );
+          return valueColumns.map((col, i) => {
+            const val = values[i];
+            const prevVal = i > 0 ? values[i - 1] : null;
+            const delta = prevVal !== null ? val - prevVal : null;
+            return (
+              <td key={i} className="py-4 px-4 text-right text-white/60 tabular-nums">
+                <div>{fmtInt(val)}</div>
+                {delta !== null && (
+                  <div className="text-xs text-white/40 mt-0.5">{fmtSignedInt(delta)}</div>
+                )}
+              </td>
+            );
+          });
+        })()}
+        <td className="sticky right-0 z-10 py-4 px-4 text-right font-medium text-green-500 tabular-nums bg-black border-l border-white/10 shadow-[-4px_0_12px_rgba(0,0,0,0.3)]">{fmtSignedInt(row.total)}</td>
       </motion.tr>
-      
+
       <AnimatePresence>
         {isOpen && (
-          <ChartModal 
-            data={chartData} 
-            channel={row.channel} 
-            onClose={() => setIsOpen(false)} 
-            snapshotWaveNumber={snapshotWaveNumber}
+          <ChartModal
+            data={chartData}
+            channel={row.channel}
+            onClose={() => setIsOpen(false)}
+            profile={CHANNEL_PROFILES[row.channel]}
           />
         )}
       </AnimatePresence>
@@ -1110,7 +1070,25 @@ const TableRow = memo(({
   );
 });
 
+function getIsSummaryPage(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  return path === '/Result' || window.location.hash === '#itog';
+}
+
 export default function App() {
+  const [isSummaryPage, setIsSummaryPage] = useState(getIsSummaryPage);
+
+  useEffect(() => {
+    const onPopState = () => setIsSummaryPage(getIsSummaryPage());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  if (isSummaryPage) {
+    return <SummaryPage />;
+  }
+
   const heroRef = useRef(null);
   const snapshotFileInputRef = useRef<HTMLInputElement | null>(null);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 768);
@@ -1126,6 +1104,8 @@ export default function App() {
   const [snapshotOverride, setSnapshotOverride] = useState<SnapshotOverride | null>(null);
   const [snapshotUploading, setSnapshotUploading] = useState(false);
   const [snapshotUploadError, setSnapshotUploadError] = useState<string | null>(null);
+  const [uploadedSnapshotDataUrl, setUploadedSnapshotDataUrl] = useState<string | null>(null);
+  const [sliceScreenshotModal, setSliceScreenshotModal] = useState<number | null>(null);
   
   // Track window resize for responsive charts
   useEffect(() => {
@@ -1134,34 +1114,40 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Load snapshot override from localStorage (persists across reloads)
+  // Load snapshot override and uploaded screenshot from localStorage (persists across reloads)
   useEffect(() => {
     try {
       const raw = localStorage.getItem('careerHubSnapshotOverrideV1');
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as SnapshotOverride;
-      if (
-        parsed &&
-        typeof parsed === 'object' &&
-        parsed.members &&
-        typeof parsed.members === 'object' &&
-        typeof parsed.datetime === 'string' &&
-        typeof parsed.label === 'string' &&
-        typeof parsed.time === 'string' &&
-        typeof parsed.waveNumber === 'number'
-      ) {
-        setSnapshotOverride(parsed);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SnapshotOverride;
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          parsed.members &&
+          typeof parsed.members === 'object' &&
+          typeof parsed.datetime === 'string' &&
+          typeof parsed.label === 'string' &&
+          typeof parsed.time === 'string' &&
+          typeof parsed.waveNumber === 'number'
+        ) {
+          setSnapshotOverride(parsed);
+          const img = localStorage.getItem('careerHubSnapshotImageV1');
+          if (img && typeof img === 'string' && img.startsWith('data:')) {
+            setUploadedSnapshotDataUrl(img);
+          }
+        }
       }
     } catch {
       // ignore
     }
   }, []);
 
-  // Persist snapshot override
+  // Persist snapshot override (and clear saved screenshot when override is cleared)
   useEffect(() => {
     try {
       if (!snapshotOverride) {
         localStorage.removeItem('careerHubSnapshotOverrideV1');
+        localStorage.removeItem('careerHubSnapshotImageV1');
       } else {
         localStorage.setItem('careerHubSnapshotOverrideV1', JSON.stringify(snapshotOverride));
       }
@@ -1270,31 +1256,91 @@ User-Agent: ${navigator.userAgent}
   const snapshotDatetime = snapshotOverride?.datetime ?? SNAPSHOT_DATETIME;
   const snapshotWaveNumber = snapshotOverride?.waveNumber ?? SNAPSHOT_WAVE_NUMBER;
 
-  /** Финал и прирост: из загруженного скриншота или из src/data/snapshot.ts. */
-  const activeSnapshot = snapshotOverride?.members ?? snapshotMembers;
+  /** Все срезы: из файла + при наличии загруженный скриншот в конце. */
+  const effectiveSnapshots = useMemo(() => {
+    if (!snapshotOverride) return SNAPSHOTS;
+    const date = snapshotOverride.datetime.slice(0, 10);
+    return [
+      ...SNAPSHOTS,
+      {
+        datetime: snapshotOverride.datetime,
+        date,
+        label: snapshotOverride.label,
+        time: snapshotOverride.time,
+        waveNumber: snapshotOverride.waveNumber,
+        members: snapshotOverride.members,
+      },
+    ];
+  }, [snapshotOverride]);
+
+  /** channelData: для каждого канала — base, wave1, wave2, current, slices[], growthToSlice[], final, growth3, total. */
   const channelData = useMemo(() => {
     return BASE_CHANNEL_DATA.map((row) => {
       const username = row.channel.replace('@', '');
-      const snapshotFinal = activeSnapshot[username];
-      if (snapshotFinal == null) return row;
-      const growth3 = snapshotFinal - row.current;
-      const total = snapshotFinal - row.base;
+      const slices = effectiveSnapshots.map((s) => s.members[username] ?? row.current);
+      const growthToSlice = slices.map((v, i) =>
+        i === 0 ? v - row.current : v - slices[i - 1]
+      );
+      const final = slices[slices.length - 1] ?? row.current;
+      const growth3 = growthToSlice[0] ?? 0;
+      const total = (slices[slices.length - 1] ?? row.current) - row.base;
       return {
         ...row,
-        final: snapshotFinal,
+        slices,
+        growthToSlice,
+        final,
         growth3,
         total,
       };
     });
-  }, [activeSnapshot]);
+  }, [effectiveSnapshots, BASE_CHANNEL_DATA]);
 
-  const chartData = useMemo(() => channelData.map(d => ({
-    name: d.channel.replace('@', ''),
-    'Волна 1': d.growth1,
-    'Волна 2': d.growth2,
-    [`Волна ${snapshotWaveNumber}`]: d.growth3,
-    'Итого': d.total,
-  })), [channelData, snapshotWaveNumber]);
+  /** Колонки значений таблицы в хронологическом порядке (базовые точки + срезы), с дедупом по (дата, время). */
+  type TableValueCol = { datetime: string; label: string; sortKey: TableSortKey; valueKey: 'base' | 'wave1' | 'wave2' | 'current' | 'slice'; sliceIndex?: number };
+  const tableValueColumns = useMemo((): TableValueCol[] => {
+    const reportDate = REPORT_START_DATETIME.slice(0, 10);
+    const base: TableValueCol[] = [
+      { datetime: `${reportDate}T11:00:00`, label: '11:00', sortKey: 'base', valueKey: 'base' },
+      { datetime: `${reportDate}T11:30:00`, label: '11:30', sortKey: 'wave1', valueKey: 'wave1' },
+      { datetime: `${reportDate}T15:30:00`, label: '15:30', sortKey: 'wave2', valueKey: 'wave2' },
+      { datetime: `${reportDate}T18:06:00`, label: '18:06', sortKey: 'current', valueKey: 'current' },
+    ];
+    const sliceCols: TableValueCol[] = effectiveSnapshots.map((s, i) => ({
+      datetime: s.datetime,
+      label: s.time,
+      sortKey: `slice_${i}` as TableSortKey,
+      valueKey: 'slice' as const,
+      sliceIndex: i,
+    }));
+    const all = [...base, ...sliceCols].sort((a, b) => a.datetime.localeCompare(b.datetime));
+    const merged: TableValueCol[] = [];
+    for (const c of all) {
+      const date = c.datetime.slice(0, 10);
+      const last = merged[merged.length - 1];
+      if (last && last.datetime.slice(0, 10) === date && last.label === c.label) {
+        if (c.valueKey === 'slice') merged[merged.length - 1] = c;
+        continue;
+      }
+      merged.push(c);
+    }
+    return merged;
+  }, [effectiveSnapshots]);
+
+  /** Данные для барчарта: Волна 1, Волна 2, по одной колонке на каждый срез (Волна N), Итого. */
+  const chartData = useMemo(() => {
+    return channelData.map((d) => {
+      const entry: Record<string, string | number> = {
+        name: d.channel.replace('@', ''),
+        'Волна 1': d.growth1,
+        'Волна 2': d.growth2,
+        'Итого': d.total,
+      };
+      effectiveSnapshots.forEach((s, i) => {
+        entry[`Волна ${s.waveNumber}`] = d.growthToSlice[i] ?? 0;
+      });
+      return entry;
+    });
+  }, [channelData, effectiveSnapshots]);
 
   /** Средний прирост по каналам (округлённо). */
   const averageGrowth = useMemo(() => {
@@ -1480,87 +1526,50 @@ User-Agent: ${navigator.userAgent}
     const t3Stable = sumByType('stable', (r) => getValue(r, 'current'));
     const t3Donor = sumByType('donor', (r) => getValue(r, 'current'));
 
-    const t4Bene = sumByType('beneficiary', (r) => getValue(r, 'final'));
-    const t4Stable = sumByType('stable', (r) => getValue(r, 'final'));
-    const t4Donor = sumByType('donor', (r) => getValue(r, 'final'));
-
-    const points = [
-      {
-        id: 'T0',
-        label: '11:00',
-        title: 'Старт (11:00)',
-        beneficiary: baseBene,
-        stable: baseStable,
-        donor: baseDonor,
-        total: baseBene + baseStable + baseDonor,
-        beneficiaryDelta: 0,
-        stableDelta: 0,
-        donorDelta: 0,
-        totalDelta: 0,
-      },
-      {
-        id: 'T1',
-        label: '11:30',
-        title: 'Волна 1 (11:00→11:30)',
-        beneficiary: t1Bene,
-        stable: t1Stable,
-        donor: t1Donor,
-        total: t1Bene + t1Stable + t1Donor,
-        beneficiaryDelta: t1Bene - baseBene,
-        stableDelta: t1Stable - baseStable,
-        donorDelta: t1Donor - baseDonor,
-        totalDelta: t1Bene + t1Stable + t1Donor - (baseBene + baseStable + baseDonor),
-      },
-      {
-        id: 'T2',
-        label: '15:30',
-        title: 'Волна 2 (11:30→15:30)',
-        beneficiary: t2Bene,
-        stable: t2Stable,
-        donor: t2Donor,
-        total: t2Bene + t2Stable + t2Donor,
-        beneficiaryDelta: t2Bene - t1Bene,
-        stableDelta: t2Stable - t1Stable,
-        donorDelta: t2Donor - t1Donor,
-        totalDelta: t2Bene + t2Stable + t2Donor - (t1Bene + t1Stable + t1Donor),
-      },
-      {
-        id: 'T3',
-        label: '18:06',
-        title: 'Срез перед хвостом (15:30→18:06)',
-        beneficiary: t3Bene,
-        stable: t3Stable,
-        donor: t3Donor,
-        total: t3Bene + t3Stable + t3Donor,
-        beneficiaryDelta: t3Bene - t2Bene,
-        stableDelta: t3Stable - t2Stable,
-        donorDelta: t3Donor - t2Donor,
-        totalDelta: t3Bene + t3Stable + t3Donor - (t2Bene + t2Stable + t2Donor),
-      },
-      {
-        id: 'T4',
-        label: snapshotTime,
-        title: `Снапшот (${snapshotTime})`,
-        beneficiary: t4Bene,
-        stable: t4Stable,
-        donor: t4Donor,
-        total: t4Bene + t4Stable + t4Donor,
-        beneficiaryDelta: t4Bene - t3Bene,
-        stableDelta: t4Stable - t3Stable,
-        donorDelta: t4Donor - t3Donor,
-        totalDelta: t4Bene + t4Stable + t4Donor - (t3Bene + t3Stable + t3Donor),
-      },
+    const basePoints = [
+      { id: 'T0', label: '11:00', title: 'Старт (11:00)', beneficiary: baseBene, stable: baseStable, donor: baseDonor, total: baseBene + baseStable + baseDonor, beneficiaryDelta: 0, stableDelta: 0, donorDelta: 0, totalDelta: 0 },
+      { id: 'T1', label: '11:30', title: 'Волна 1 (11:00→11:30)', beneficiary: t1Bene, stable: t1Stable, donor: t1Donor, total: t1Bene + t1Stable + t1Donor, beneficiaryDelta: t1Bene - baseBene, stableDelta: t1Stable - baseStable, donorDelta: t1Donor - baseDonor, totalDelta: t1Bene + t1Stable + t1Donor - (baseBene + baseStable + baseDonor) },
+      { id: 'T2', label: '15:30', title: 'Волна 2 (11:30→15:30)', beneficiary: t2Bene, stable: t2Stable, donor: t2Donor, total: t2Bene + t2Stable + t2Donor, beneficiaryDelta: t2Bene - t1Bene, stableDelta: t2Stable - t1Stable, donorDelta: t2Donor - t1Donor, totalDelta: t2Bene + t2Stable + t2Donor - (t1Bene + t1Stable + t1Donor) },
+      { id: 'T3', label: '18:06', title: 'Срез перед хвостом (15:30→18:06)', beneficiary: t3Bene, stable: t3Stable, donor: t3Donor, total: t3Bene + t3Stable + t3Donor, beneficiaryDelta: t3Bene - t2Bene, stableDelta: t3Stable - t2Stable, donorDelta: t3Donor - t2Donor, totalDelta: t3Bene + t3Stable + t3Donor - (t2Bene + t2Stable + t2Donor) },
     ];
 
-    const beneficiaryTotalGrowth = t4Bene - baseBene;
-    const stableTotalGrowth = t4Stable - baseStable;
-    const donorTotalGrowth = t4Donor - baseDonor;
+    let prevBene = t3Bene, prevStable = t3Stable, prevDonor = t3Donor, prevTotal = t3Bene + t3Stable + t3Donor;
+    const slicePoints = effectiveSnapshots.map((s, i) => {
+      const sBene = channelData.filter((r) => r.type === 'beneficiary').reduce((a, r) => a + (r.slices?.[i] ?? r.final ?? 0), 0);
+      const sStable = channelData.filter((r) => r.type === 'stable').reduce((a, r) => a + (r.slices?.[i] ?? r.final ?? 0), 0);
+      const sDonor = channelData.filter((r) => r.type === 'donor').reduce((a, r) => a + (r.slices?.[i] ?? r.final ?? 0), 0);
+      const sTotal = sBene + sStable + sDonor;
+      const point = {
+        id: `T${4 + i}`,
+        label: s.time,
+        title: `Срез (${s.time})`,
+        beneficiary: sBene,
+        stable: sStable,
+        donor: sDonor,
+        total: sTotal,
+        beneficiaryDelta: sBene - prevBene,
+        stableDelta: sStable - prevStable,
+        donorDelta: sDonor - prevDonor,
+        totalDelta: sTotal - prevTotal,
+      };
+      prevBene = sBene; prevStable = sStable; prevDonor = sDonor; prevTotal = sTotal;
+      return point;
+    });
+
+    const points = [...basePoints, ...slicePoints];
+
+    const lastBene = points[points.length - 1]?.beneficiary ?? t3Bene;
+    const lastStable = points[points.length - 1]?.stable ?? t3Stable;
+    const lastDonor = points[points.length - 1]?.donor ?? t3Donor;
+    const beneficiaryTotalGrowth = lastBene - baseBene;
+    const stableTotalGrowth = lastStable - baseStable;
+    const donorTotalGrowth = lastDonor - baseDonor;
     const totalGrowth = beneficiaryTotalGrowth + stableTotalGrowth + donorTotalGrowth;
 
     const wave1Growth = points[1].totalDelta;
     const wave2Growth = points[2].totalDelta;
     const wave3Growth = points[3].totalDelta;
-    const tailGrowth = points[4].totalDelta;
+    const tailGrowth = points[points.length - 1]?.totalDelta ?? 0;
 
     return {
       points,
@@ -1573,7 +1582,7 @@ User-Agent: ${navigator.userAgent}
       stableTotalGrowth,
       donorTotalGrowth,
     };
-  }, [channelData, snapshotTime]);
+  }, [channelData, effectiveSnapshots]);
 
   const tableDataView = useMemo(() => {
     const q = tableQuery.trim().toLowerCase();
@@ -1588,6 +1597,14 @@ User-Agent: ${navigator.userAgent}
 
     const getVal = (r: any): string | number => {
       if (key === 'channel') return String(r.channel || '');
+      if (typeof key === 'string' && key.startsWith('slice_')) {
+        const i = parseInt(key.replace('slice_', ''), 10);
+        return Number(r.slices?.[i] ?? r.final ?? 0);
+      }
+      if (typeof key === 'string' && key.startsWith('growthToSlice_')) {
+        const i = parseInt(key.replace('growthToSlice_', ''), 10);
+        return Number(r.growthToSlice?.[i] ?? r.growth3 ?? 0);
+      }
       return Number(r[key] ?? 0);
     };
 
@@ -1612,7 +1629,174 @@ User-Agent: ${navigator.userAgent}
 
   const sortMark = (key: TableSortKey) => (tableSort.key === key ? (tableSort.dir === 'desc' ? '↓' : '↑') : '');
 
-  /** Категории для волны 1 (growth1): термин, определение, строка каналов. */
+  /** Периоды: первые ~30 мин, первые/вторые/третьи сутки, остаток. Границы от REPORT_START_DATETIME. */
+  type PeriodKey = 'first30min' | 'firstDay' | 'secondDay' | 'thirdDay' | 'residual';
+  const PERIOD_MS = {
+    first30min: 30 * 60 * 1000,
+    firstDay: 24 * 60 * 60 * 1000,
+    secondDay: 2 * 24 * 60 * 60 * 1000,
+    thirdDay: 3 * 24 * 60 * 60 * 1000,
+  } as const;
+
+  const reportStartMs = useMemo(() => new Date(REPORT_START_DATETIME).getTime(), []);
+
+  function getPeriodKey(endDatetime: string): PeriodKey {
+    const endMs = new Date(endDatetime).getTime();
+    const elapsed = endMs - reportStartMs;
+    if (elapsed <= PERIOD_MS.first30min) return 'first30min';
+    if (elapsed <= PERIOD_MS.firstDay) return 'firstDay';
+    if (elapsed <= PERIOD_MS.secondDay) return 'secondDay';
+    if (elapsed <= PERIOD_MS.thirdDay) return 'thirdDay';
+    return 'residual';
+  }
+
+  /** Интервалы с датой окончания и приростом по каналам. */
+  const intervalsWithGrowth = useMemo(() => {
+    const reportDate = REPORT_START_DATETIME.slice(0, 10);
+    const list: { endDatetime: string; growthByChannel: Record<string, number> }[] = [];
+    channelData.forEach((row) => {
+      const ch = row.channel;
+      list.length || list.push({ endDatetime: `${reportDate}T11:30:00`, growthByChannel: {} });
+      const idx0 = list.findIndex((i) => i.endDatetime === `${reportDate}T11:30:00`);
+      if (idx0 >= 0) (list[idx0].growthByChannel as Record<string, number>)[ch] = row.growth1;
+    });
+    list.push({
+      endDatetime: `${reportDate}T15:30:00`,
+      growthByChannel: Object.fromEntries(channelData.map((r) => [r.channel, r.growth2])),
+    });
+    list.push({
+      endDatetime: `${reportDate}T18:06:00`,
+      growthByChannel: Object.fromEntries(
+        channelData.map((r) => [r.channel, r.current - r.wave2])
+      ),
+    });
+    effectiveSnapshots.forEach((s, i) => {
+      list.push({
+        endDatetime: s.datetime,
+        growthByChannel: Object.fromEntries(channelData.map((r) => [r.channel, r.growthToSlice[i] ?? 0])),
+      });
+    });
+    return list;
+  }, [channelData, effectiveSnapshots]);
+
+  /** Прирост по каналам в каждом периоде (сумма интервалов, попадающих в период). */
+  const growthByPeriod = useMemo(() => {
+    const map: Record<PeriodKey, Record<string, number>> = {
+      first30min: {},
+      firstDay: {},
+      secondDay: {},
+      thirdDay: {},
+      residual: {},
+    };
+    channelData.forEach((r) => {
+      map.first30min![r.channel] = 0;
+      map.firstDay![r.channel] = 0;
+      map.secondDay![r.channel] = 0;
+      map.thirdDay![r.channel] = 0;
+      map.residual![r.channel] = 0;
+    });
+    intervalsWithGrowth.forEach((interval) => {
+      const period = getPeriodKey(interval.endDatetime);
+      Object.entries(interval.growthByChannel).forEach(([ch, growth]) => {
+        map[period][ch] = (map[period][ch] ?? 0) + growth;
+      });
+    });
+    return map;
+  }, [channelData, intervalsWithGrowth]);
+
+  /** Блоки периодов: заголовок, подпись времени, категории (лидеры/сильная группа/умеренный), инсайт. */
+  const periodBlocks = useMemo((): {
+    key: PeriodKey;
+    title: string;
+    timeRangeLabel: string;
+    categories: { term: string; definition: string; line: string }[];
+    insight: string;
+  }[] => {
+    const reportDate = REPORT_START_DATETIME.slice(0, 10);
+    const labels: Record<PeriodKey, { title: string; timeRange: string }> = {
+      first30min: { title: 'Первые ~30 мин', timeRange: '11:00 → 11:30' },
+      firstDay: { title: 'Первые сутки', timeRange: '9 фев 11:00 → 10 фев 11:00' },
+      secondDay: { title: 'Вторые сутки', timeRange: '10 фев 11:00 → 11 фев 11:00' },
+      thirdDay: { title: 'Третьи сутки', timeRange: '11 фев 11:00 → 12 фев 11:00' },
+      residual: { title: 'Остаточные данные', timeRange: 'после 12 фев 11:00' },
+    };
+    const definitions: Record<PeriodKey, { top: string; strong: string; moderate: string }> = {
+      first30min: {
+        top: 'Максимальный прирост в первые 30 минут. Лучшая конверсия витрины папки в раннем окне.',
+        strong: 'Прирост близок к максимуму — быстрый захват внимания.',
+        moderate: 'Низкий прирост в старте; рост может сместиться в следующие периоды.',
+      },
+      firstDay: {
+        top: 'Максимальный прирост за первые сутки. Основной импульс папки.',
+        strong: 'Сильный прирост за первые 24 часа.',
+        moderate: 'Умеренный прирост в первый день.',
+      },
+      secondDay: {
+        top: 'Лидер второго дня. Рост продолжается после первичного импульса.',
+        strong: 'Заметный прирост во вторые сутки.',
+        moderate: 'Небольшой прирост во второй день.',
+      },
+      thirdDay: {
+        top: 'Лидер третьего дня. Динамика в длинном хвосте.',
+        strong: 'Прирост выше среднего в третьи сутки.',
+        moderate: 'Умеренный прирост в третий день.',
+      },
+      residual: {
+        top: 'Максимальный прирост в остаточном периоде. Инерция и поздние подписчики.',
+        strong: 'Заметный прирост после третьих суток.',
+        moderate: 'Небольшой остаточный рост.',
+      },
+    };
+    const fmt = (arr: { channel: string; growth: number }[]) =>
+      arr.map((r) => `${r.channel} (${fmtSignedInt(r.growth)})`).join(', ');
+
+    return (['first30min', 'firstDay', 'secondDay', 'thirdDay', 'residual'] as PeriodKey[]).map((key) => {
+      const growthMap = growthByPeriod[key];
+      const rows = channelData.map((r) => ({ ...r, periodGrowth: growthMap[r.channel] ?? 0 }));
+      const sorted = [...rows].sort((a, b) => b.periodGrowth - a.periodGrowth);
+      const withPositive = sorted.filter((r) => r.periodGrowth > 0);
+      const categories: { term: string; definition: string; line: string }[] = [];
+      const def = definitions[key];
+      if (withPositive.length > 0) {
+        const maxG = withPositive[0].periodGrowth;
+        const top = withPositive.filter((r) => r.periodGrowth === maxG);
+        const strong = withPositive.filter((r) => r.periodGrowth < maxG && r.periodGrowth >= Math.max(maxG - 8, 0));
+        const rest = withPositive.filter((r) => r.periodGrowth < maxG - 8);
+        if (top.length) categories.push({ term: 'Лидер периода', definition: def.top, line: fmt(top.map((r) => ({ channel: r.channel, growth: r.periodGrowth }))) });
+        if (strong.length) categories.push({ term: 'Сильная группа', definition: def.strong, line: fmt(strong.map((r) => ({ channel: r.channel, growth: r.periodGrowth }))) });
+        if (rest.length) categories.push({ term: 'Умеренный прирост', definition: def.moderate, line: fmt(rest.map((r) => ({ channel: r.channel, growth: r.periodGrowth }))) });
+      }
+      const totalInPeriod = sorted.reduce((s, r) => s + r.periodGrowth, 0);
+      const leader = sorted[0];
+      const periodMin = sorted.length ? Math.min(...sorted.map((r) => r.periodGrowth)) : 0;
+      const periodMax = sorted.length ? Math.max(...sorted.map((r) => r.periodGrowth)) : 0;
+      const donors = rows.filter((r) => r.type === 'donor');
+      const bene = rows.filter((r) => r.type === 'beneficiary');
+      const donorSum = donors.reduce((s, r) => s + r.periodGrowth, 0);
+      const beneSum = bene.reduce((s, r) => s + r.periodGrowth, 0);
+      let insight = '';
+      if (key === 'first30min') {
+        insight = leader ? `В первом получасе лидируют ${fmt([{ channel: leader.channel, growth: leader.periodGrowth }])}. Диапазон прироста: ${fmtSignedInt(periodMin)}…${fmtSignedInt(periodMax)}.` : 'Нет данных за период.';
+      } else if (totalInPeriod <= 0 && withPositive.length === 0) {
+        insight = 'В этом периоде прироста по срезам не зафиксировано.';
+      } else {
+        const parts: string[] = [];
+        if (leader && leader.periodGrowth > 0) parts.push(`Лидер периода: ${leader.channel} (${fmtSignedInt(leader.periodGrowth)}).`);
+        if (donors.length && bene.length) parts.push(`Доноры в сумме ${fmtSignedInt(donorSum)}, бенефициары ${fmtSignedInt(beneSum)}.`);
+        parts.push(`Диапазон: ${fmtSignedInt(periodMin)}…${fmtSignedInt(periodMax)}.`);
+        insight = parts.join(' ');
+      }
+      return {
+        key,
+        title: labels[key].title,
+        timeRangeLabel: labels[key].timeRange,
+        categories,
+        insight,
+      };
+    });
+  }, [channelData, growthByPeriod]);
+
+  /** Категории для волны 1 (growth1): термин, определение, строка каналов. (оставлено для совместимости, можно удалить после перехода на periodBlocks) */
   const wave1Categories = useMemo(() => {
     const sorted = [...channelData].sort((a, b) => b.growth1 - a.growth1);
     if (sorted.length === 0) return [];
@@ -1759,6 +1943,10 @@ User-Agent: ${navigator.userAgent}
   const resetSnapshotToDefault = () => {
     setSnapshotUploadError(null);
     setSnapshotOverride(null);
+    setUploadedSnapshotDataUrl(null);
+    try {
+      localStorage.removeItem('careerHubSnapshotImageV1');
+    } catch { /* ignore */ }
     if (snapshotFileInputRef.current) snapshotFileInputRef.current.value = '';
   };
 
@@ -1812,6 +2000,12 @@ User-Agent: ${navigator.userAgent}
         label: formatSnapshotLabel(now),
         waveNumber: nextWave,
       });
+      setUploadedSnapshotDataUrl(dataUrl);
+      try {
+        localStorage.setItem('careerHubSnapshotImageV1', dataUrl);
+      } catch {
+        // localStorage quota can be exceeded for large images
+      }
     } catch (e: any) {
       setSnapshotUploadError(e?.message || 'Ошибка при загрузке скриншота');
     } finally {
@@ -1901,6 +2095,7 @@ User-Agent: ${navigator.userAgent}
               CAREER HUB
             </h1>
             <nav className="hidden lg:flex items-center gap-3 text-xs text-white/60 overflow-x-auto max-w-[55vw]">
+              <a href="/Result" className="hover:text-white transition-colors whitespace-nowrap text-white/80">Итог за 4 дня</a>
               <a href="#data" className="hover:text-white transition-colors whitespace-nowrap">Лидеры</a>
               <a href="#waves" className="hover:text-white transition-colors whitespace-nowrap">Волны</a>
               <a href="#charts" className="hover:text-white transition-colors whitespace-nowrap">Графики</a>
@@ -1927,6 +2122,12 @@ User-Agent: ${navigator.userAgent}
                 )}
               </div>
 
+              <a
+                href="/Result"
+                className="border border-white/25 px-3 md:px-4 py-1 text-xs md:text-sm rounded-full hover:bg-white/10 transition-all duration-300"
+              >
+                Итог за 4 дня
+              </a>
               <motion.button
                 type="button"
                 onClick={openSnapshotPicker}
@@ -2164,13 +2365,13 @@ User-Agent: ${navigator.userAgent}
                     +{fmtInt(channel.total)}
                   </motion.div>
                   <div className="space-y-2 text-sm text-white/60">
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span>База</span>
-                      <span className="text-white">{fmtInt(channel.base)}</span>
+                    <div className="flex justify-between border-b border-white/10 pb-2 gap-2">
+                      <span className="truncate" title={REPORT_START_LABEL}>{formatDateTimeLabel(REPORT_START_DATETIME)}</span>
+                      <span className="text-white shrink-0">{fmtInt(channel.base)}</span>
                     </div>
-                    <div className="flex justify-between border-b border-white/10 pb-2">
-                      <span>Сейчас</span>
-                      <span className="text-white">{fmtInt(channel.final)}</span>
+                    <div className="flex justify-between border-b border-white/10 pb-2 gap-2">
+                      <span className="truncate" title={snapshotLabel}>{effectiveSnapshots.length > 0 ? formatDateTimeLabel(effectiveSnapshots[effectiveSnapshots.length - 1].datetime) : snapshotLabel}</span>
+                      <span className="text-white shrink-0">{fmtInt(channel.final)}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -2179,65 +2380,62 @@ User-Agent: ${navigator.userAgent}
           </div>
         </section>
 
-        {/* Wave Analysis */}
+        {/* Period blocks: таблица — слева периоды, справа лидеры и инсайты */}
         <section className="border-b border-white/20 scroll-mt-28" id="waves">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-black">
-            <div className="p-6 md:p-12 lg:p-20 bg-black">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-              >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 1</h3>
-                <p className="text-white/60 mb-6">11:00 → 11:30</p>
-                <div className="space-y-6">
-                  {wave1Categories.map((cat) => (
-                    <div key={cat.term}>
-                      <TermWithTooltip term={cat.term} definition={cat.definition} />
-                      <div className="text-xl">{cat.line}</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-
-            <div className="p-6 md:p-12 lg:p-20 bg-black">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-              >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 2</h3>
-                <p className="text-white/60 mb-6">11:30 → ~15:30</p>
-                <div className="space-y-6">
-                  {wave2Categories.map((cat) => (
-                    <div key={cat.term}>
-                      <TermWithTooltip term={cat.term} definition={cat.definition} />
-                      <div className="text-xl">{cat.line}</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-
-            <div className="p-6 md:p-12 lg:p-20 bg-black">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-              >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА {snapshotWaveNumber}</h3>
-                <p className="text-white/60 mb-6">15:30 → {snapshotTime}</p>
-                <div className="space-y-6">
-                  {wave3Categories.map((cat) => (
-                    <div key={cat.term}>
-                      <TermWithTooltip term={cat.term} definition={cat.definition} />
-                      <div className="text-xl">{cat.line}</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse min-w-[640px]">
+              <thead>
+                <tr className="border-b border-white/20">
+                  <th className="text-left py-4 px-6 md:px-8 w-[1%] whitespace-nowrap text-[10px] md:text-xs font-medium text-white/50 uppercase tracking-[0.25em]">
+                    Период
+                  </th>
+                  <th className="text-left py-4 px-6 md:px-8 text-[10px] md:text-xs font-medium text-white/50 uppercase tracking-[0.25em]">
+                    Лидеры и инсайты
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodBlocks.map((block, idx) => (
+                  <motion.tr
+                    key={block.key}
+                    initial={{ opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="border-b border-white/10 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <td className="py-6 md:py-8 px-6 md:px-8 align-top bg-black/40">
+                      <div className="sticky left-0">
+                        <div className="text-xl md:text-2xl font-light tracking-tight text-white uppercase">
+                          {block.title}
+                        </div>
+                        <div className="mt-1.5 text-sm text-white/50 font-mono">
+                          {block.timeRangeLabel}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-6 md:py-8 px-6 md:px-8 align-top">
+                      <div className="space-y-5">
+                        {block.categories.map((cat) => (
+                          <div key={cat.term}>
+                            <TermWithTooltip term={cat.term} definition={cat.definition} />
+                            <div className="text-base md:text-lg mt-1 text-white/90">{cat.line}</div>
+                          </div>
+                        ))}
+                        {block.insight && (
+                          <div className="pt-4 mt-4 border-t border-white/10">
+                            <div className="text-[10px] md:text-xs text-white/40 uppercase tracking-[0.2em] mb-1.5">
+                              Ключевой инсайт периода
+                            </div>
+                            <p className="text-sm md:text-[15px] text-white/80 leading-relaxed">{block.insight}</p>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -2445,7 +2643,7 @@ User-Agent: ${navigator.userAgent}
               viewport={{ once: true }}
               className="text-4xl md:text-6xl font-light tracking-tight mb-6"
             >
-              ЭФФЕКТ ПАПКИ СХОДИТ НА НЕТ
+              ЭФФЕКТ ПАПКИ
             </motion.h3>
 
             <motion.p
@@ -2813,47 +3011,24 @@ User-Agent: ${navigator.userAgent}
                         <span className="text-white/40 text-xs">{sortMark('channel')}</span>
                       </button>
                     </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('base')} className="hover:text-white transition-colors w-full text-right">
-                        11:00 <span className="text-white/40 text-xs ml-1">{sortMark('base')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('wave1')} className="hover:text-white transition-colors w-full text-right">
-                        11:30 <span className="text-white/40 text-xs ml-1">{sortMark('wave1')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('wave2')} className="hover:text-white transition-colors w-full text-right">
-                        15:30 <span className="text-white/40 text-xs ml-1">{sortMark('wave2')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light sticky z-20 bg-black/95 backdrop-blur border-b border-white/20" style={{ top: 0 }}>
-                      <button type="button" onClick={() => toggleTableSort('current')} className="hover:text-white transition-colors w-full text-right">
-                        18:06 <span className="text-white/40 text-xs ml-1">{sortMark('current')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20" title={snapshotLabel}>
-                      <button type="button" onClick={() => toggleTableSort('final')} className="hover:text-white transition-colors w-full text-right">
-                        Срез ({snapshotTime}) <span className="text-white/40 text-xs ml-1">{sortMark('final')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('growth1')} className="hover:text-white transition-colors w-full text-right">
-                        Волна 1 <span className="text-white/40 text-xs ml-1">{sortMark('growth1')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('growth2')} className="hover:text-white transition-colors w-full text-right">
-                        Волна 2 <span className="text-white/40 text-xs ml-1">{sortMark('growth2')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
-                      <button type="button" onClick={() => toggleTableSort('growth3')} className="hover:text-white transition-colors w-full text-right">
-                        Волна {snapshotWaveNumber} <span className="text-white/40 text-xs ml-1">{sortMark('growth3')}</span>
-                      </button>
-                    </th>
-                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                    {tableValueColumns.map((col, i) => (
+                      <th key={i} className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20" title={col.valueKey === 'slice' && col.sliceIndex !== undefined ? effectiveSnapshots[col.sliceIndex]?.label : undefined}>
+                        {col.valueKey === 'slice' && col.sliceIndex !== undefined ? (
+                          <button
+                            type="button"
+                            onClick={() => setSliceScreenshotModal(col.sliceIndex!)}
+                            className="hover:text-white transition-colors w-full text-right cursor-pointer underline decoration-white/30 hover:decoration-white/60"
+                          >
+                            Срез ({col.label}) <span className="text-white/40 text-xs ml-1">{sortMark(col.sortKey)}</span>
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => toggleTableSort(col.sortKey)} className="hover:text-white transition-colors w-full text-right">
+                            {col.label} <span className="text-white/40 text-xs ml-1">{sortMark(col.sortKey)}</span>
+                          </button>
+                        )}
+                      </th>
+                    ))}
+                    <th className="sticky right-0 z-20 text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20 border-l border-white/20 shadow-[-4px_0_12px_rgba(0,0,0,0.4)]">
                       <button type="button" onClick={() => toggleTableSort('total')} className="hover:text-white transition-colors w-full text-right">
                         Итого <span className="text-white/40 text-xs ml-1">{sortMark('total')}</span>
                       </button>
@@ -2866,8 +3041,9 @@ User-Agent: ${navigator.userAgent}
                       key={row.channel}
                       row={row}
                       idx={idx}
+                      valueColumns={tableValueColumns}
                       onGenerateInsight={(r) => setInsightModalRow(r)}
-                      snapshotTime={snapshotTime}
+                      snapshotSlices={effectiveSnapshots.map((s) => ({ time: s.time, waveNumber: s.waveNumber, datetime: s.datetime }))}
                       snapshotWaveNumber={snapshotWaveNumber}
                     />
                   ))}
@@ -2884,6 +3060,26 @@ User-Agent: ${navigator.userAgent}
               channel={insightModalRow.channel}
               promptText={buildChannelInsightPrompt(insightModalRow, channelData, snapshotLabel)}
               onClose={() => setInsightModalRow(null)}
+            />
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {sliceScreenshotModal !== null && effectiveSnapshots[sliceScreenshotModal] && (
+            <SliceScreenshotModal
+              key={sliceScreenshotModal}
+              label={effectiveSnapshots[sliceScreenshotModal].label}
+              time={effectiveSnapshots[sliceScreenshotModal].time}
+              waveNumber={effectiveSnapshots[sliceScreenshotModal].waveNumber}
+              imageUrl={(() => {
+                const raw = (effectiveSnapshots[sliceScreenshotModal] as { screenshotUrl?: string }).screenshotUrl ??
+                  (sliceScreenshotModal === effectiveSnapshots.length - 1 && snapshotOverride ? uploadedSnapshotDataUrl : null);
+                if (!raw) return null;
+                if (raw.startsWith('data:')) return raw;
+                const base = (import.meta.env.BASE_URL || '').replace(/\/$/, '');
+                return base ? `${base}${raw.startsWith('/') ? raw : `/${raw}`}` : raw;
+              })()}
+              onClose={() => setSliceScreenshotModal(null)}
             />
           )}
         </AnimatePresence>
