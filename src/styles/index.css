@@ -30,14 +30,6 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Reduce animations on mobile */
-@media (max-width: 768px) {
-  * {
-    animation-duration: 0.3s !important;
-    transition-duration: 0.2s !important;
-  }
-}
-
 /* Prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

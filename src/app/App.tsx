@@ -66,6 +66,38 @@ function fmtPct(x: number, digits = 1): string {
   return `${(v * 100).toFixed(digits)}%`;
 }
 
+function fmtInt(x: number): string {
+  const v = Number.isFinite(x) ? x : 0;
+  return Math.round(v).toLocaleString('ru-RU');
+}
+
+function fmtSignedInt(x: number): string {
+  const v = Number.isFinite(x) ? Math.round(x) : 0;
+  return v > 0 ? `+${fmtInt(v)}` : fmtInt(v);
+}
+
+type TableSortKey =
+  | 'channel'
+  | 'base'
+  | 'wave1'
+  | 'wave2'
+  | 'current'
+  | 'final'
+  | 'growth1'
+  | 'growth2'
+  | 'growth3'
+  | 'total';
+
+type TableSortDir = 'asc' | 'desc';
+
+type SnapshotOverride = {
+  members: Record<string, number>;
+  datetime: string; // ISO
+  label: string;
+  time: string; // HH:MM
+  waveNumber: number;
+};
+
 const CountUp = memo(({ end, duration = 2 }: { end: number; duration?: number }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -125,7 +157,7 @@ const TermWithTooltip = ({ term, definition }: { term: string; definition: strin
       <span>{term}</span>
       <TooltipUI>
         <TooltipTrigger asChild>
-          <button className="hover:text-white/60 transition-colors">
+          <button type="button" aria-label={`Пояснение: ${term}`} className="hover:text-white/60 transition-colors">
             <HelpCircle className="w-3.5 h-3.5" />
           </button>
         </TooltipTrigger>
@@ -173,7 +205,17 @@ const InsightCard = ({
   </motion.div>
 );
 
-const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; value: number }[]; channel: string; onClose: () => void }) => {
+const ChartModal = memo(({
+  data,
+  channel,
+  onClose,
+  snapshotWaveNumber,
+}: {
+  data: { time: string; value: number }[];
+  channel: string;
+  onClose: () => void;
+  snapshotWaveNumber: number;
+}) => {
   const maxValue = useMemo(() => Math.max(...data.map(d => d.value)), [data]);
   const minValue = useMemo(() => Math.min(...data.map(d => d.value)), [data]);
   const range = useMemo(() => maxValue - minValue, [maxValue, minValue]);
@@ -181,6 +223,7 @@ const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; val
 
   useEffect(() => {
     // Block scroll
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     
     const handleEsc = (e: KeyboardEvent) => {
@@ -189,7 +232,7 @@ const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; val
     window.addEventListener('keydown', handleEsc);
     
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', handleEsc);
     };
   }, [onClose]);
@@ -229,15 +272,15 @@ const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; val
               <div className="flex items-center gap-6">
                 <div>
                   <div className="text-xs text-white/40 mb-1">База</div>
-                  <div className="text-xl md:text-2xl">{data[0].value}</div>
+                  <div className="text-xl md:text-2xl tabular-nums">{fmtInt(data[0].value)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-white/40 mb-1">Прирост</div>
-                  <div className="text-xl md:text-2xl text-green-500">+{totalGrowth}</div>
+                  <div className="text-xl md:text-2xl text-green-500 tabular-nums">{fmtSignedInt(totalGrowth)}</div>
                 </div>
                 <div>
                   <div className="text-xs text-white/40 mb-1">Сейчас</div>
-                  <div className="text-xl md:text-2xl">{data[data.length - 1].value}</div>
+                  <div className="text-xl md:text-2xl tabular-nums">{fmtInt(data[data.length - 1].value)}</div>
                 </div>
               </div>
             </div>
@@ -314,14 +357,14 @@ const ChartModal = memo(({ data, channel, onClose }: { data: { time: string; val
                   {i === 0 && 'База'}
                   {i === 1 && 'Волна 1'}
                   {i === 2 && 'Волна 2'}
-                  {i === 3 && `Волна ${SNAPSHOT_WAVE_NUMBER}`}
-                  {i === 4 && `Волна ${SNAPSHOT_WAVE_NUMBER} (финал)`}
+                  {i === 3 && `Волна ${snapshotWaveNumber}`}
+                  {i === 4 && `Волна ${snapshotWaveNumber} (финал)`}
                 </div>
                 <div className="text-sm text-white/60 mb-2">{d.time}</div>
-                <div className="text-2xl md:text-3xl font-light">{d.value}</div>
+                <div className="text-2xl md:text-3xl font-light tabular-nums">{fmtInt(d.value)}</div>
                 {i > 0 && (
                   <div className="text-sm text-green-500 mt-1">
-                    +{d.value - data[i - 1].value}
+                    {fmtSignedInt(d.value - data[i - 1].value)}
                   </div>
                 )}
               </div>
@@ -973,7 +1016,19 @@ const InsightModal = ({
   );
 };
 
-const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number; onGenerateInsight?: (row: any) => void }) => {
+const TableRow = memo(({
+  row,
+  idx,
+  onGenerateInsight,
+  snapshotTime,
+  snapshotWaveNumber,
+}: {
+  row: any;
+  idx: number;
+  onGenerateInsight?: (row: any) => void;
+  snapshotTime: string;
+  snapshotWaveNumber: number;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   
   const chartData = useMemo(() => [
@@ -981,8 +1036,8 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
     { time: '11:30', value: row.wave1 },
     { time: '15:30', value: row.wave2 },
     { time: '18:06', value: row.current },
-    { time: SNAPSHOT_TIME, value: row.final },
-  ], [row.base, row.wave1, row.wave2, row.current, row.final]);
+    { time: snapshotTime, value: row.final },
+  ], [row.base, row.wave1, row.wave2, row.current, row.final, snapshotTime]);
 
   // Simplified animations on mobile
   const animationProps = isMobile || prefersReducedMotion
@@ -994,10 +1049,10 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
       <motion.tr
         {...animationProps}
         viewport={{ once: true }}
-        className="border-b border-white/10 hover:bg-white/5 transition-colors relative cursor-pointer"
+        className="border-b border-white/10 hover:bg-white/5 transition-colors relative cursor-pointer group"
         onClick={() => setIsOpen(true)}
       >
-        <td className="py-4 px-4">
+        <td className="py-4 px-4 sticky left-0 z-10 bg-black group-hover:bg-white/5">
           <div className="flex items-center gap-2">
             <ChannelLink channel={row.channel} />
             <motion.button
@@ -1009,6 +1064,7 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
                 setIsOpen(true);
               }}
               title="График роста"
+              aria-label="Открыть график роста"
             >
               <TrendingUp className="w-4 h-4" />
             </motion.button>
@@ -1022,21 +1078,22 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
                   onGenerateInsight(row);
                 }}
                 title="Сгенерировать инсайты по каналу"
+                aria-label="Сгенерировать инсайты по каналу"
               >
                 <Sparkles className="w-4 h-4" />
               </motion.button>
             )}
           </div>
         </td>
-        <td className="py-4 px-4 text-right text-white/60">{row.base}</td>
-        <td className="py-4 px-4 text-right text-white/60">{row.wave1}</td>
-        <td className="py-4 px-4 text-right text-white/60">{row.wave2}</td>
-        <td className="py-4 px-4 text-right text-white/60">{row.current}</td>
-        <td className="py-4 px-4 text-right text-white/60">{row.final}</td>
-        <td className="py-4 px-4 text-right">+{row.growth1}</td>
-        <td className="py-4 px-4 text-right">+{row.growth2}</td>
-        <td className="py-4 px-4 text-right">+{row.growth3}</td>
-        <td className="py-4 px-4 text-right font-medium text-green-500">+{row.total}</td>
+        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.base)}</td>
+        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.wave1)}</td>
+        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.wave2)}</td>
+        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.current)}</td>
+        <td className="py-4 px-4 text-right text-white/60 tabular-nums">{fmtInt(row.final)}</td>
+        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth1)}</td>
+        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth2)}</td>
+        <td className="py-4 px-4 text-right tabular-nums">{fmtSignedInt(row.growth3)}</td>
+        <td className="py-4 px-4 text-right font-medium text-green-500 tabular-nums">{fmtSignedInt(row.total)}</td>
       </motion.tr>
       
       <AnimatePresence>
@@ -1045,6 +1102,7 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
             data={chartData} 
             channel={row.channel} 
             onClose={() => setIsOpen(false)} 
+            snapshotWaveNumber={snapshotWaveNumber}
           />
         )}
       </AnimatePresence>
@@ -1054,18 +1112,72 @@ const TableRow = memo(({ row, idx, onGenerateInsight }: { row: any; idx: number;
 
 export default function App() {
   const heroRef = useRef(null);
+  const snapshotFileInputRef = useRef<HTMLInputElement | null>(null);
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 768);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
   const [insightModalRow, setInsightModalRow] = useState<{ channel: string; base: number; wave1: number; wave2: number; current: number; final: number; growth1: number; growth2: number; growth3: number; total: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showContent, setShowContent] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [tableQuery, setTableQuery] = useState('');
+  const [tableType, setTableType] = useState<'all' | 'beneficiary' | 'stable' | 'donor'>('all');
+  const [tableSort, setTableSort] = useState<{ key: TableSortKey; dir: TableSortDir }>({ key: 'total', dir: 'desc' });
+  const [snapshotOverride, setSnapshotOverride] = useState<SnapshotOverride | null>(null);
+  const [snapshotUploading, setSnapshotUploading] = useState(false);
+  const [snapshotUploadError, setSnapshotUploadError] = useState<string | null>(null);
   
   // Track window resize for responsive charts
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Load snapshot override from localStorage (persists across reloads)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('careerHubSnapshotOverrideV1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as SnapshotOverride;
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        parsed.members &&
+        typeof parsed.members === 'object' &&
+        typeof parsed.datetime === 'string' &&
+        typeof parsed.label === 'string' &&
+        typeof parsed.time === 'string' &&
+        typeof parsed.waveNumber === 'number'
+      ) {
+        setSnapshotOverride(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Persist snapshot override
+  useEffect(() => {
+    try {
+      if (!snapshotOverride) {
+        localStorage.removeItem('careerHubSnapshotOverrideV1');
+      } else {
+        localStorage.setItem('careerHubSnapshotOverrideV1', JSON.stringify(snapshotOverride));
+      }
+    } catch {
+      // ignore
+    }
+  }, [snapshotOverride]);
+
+  // Back-to-top button visibility
+  useEffect(() => {
+    const onScroll = () => {
+      setShowBackToTop(window.scrollY > 900);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true } as any);
+    return () => window.removeEventListener('scroll', onScroll as any);
   }, []);
 
   // Hide loading screen after content is ready
@@ -1147,11 +1259,19 @@ User-Agent: ${navigator.userAgent}
     offset: ["start start", "end start"]
   });
 
+  const { scrollYProgress: pageScrollYProgress } = useScroll();
+
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [1, 0.5, 0]);
+  const progressWidth = useTransform(pageScrollYProgress, [0, 1], ['0%', '100%']);
+
+  const snapshotLabel = snapshotOverride?.label ?? SNAPSHOT_LABEL;
+  const snapshotTime = snapshotOverride?.time ?? SNAPSHOT_TIME;
+  const snapshotDatetime = snapshotOverride?.datetime ?? SNAPSHOT_DATETIME;
+  const snapshotWaveNumber = snapshotOverride?.waveNumber ?? SNAPSHOT_WAVE_NUMBER;
 
   /** Финал и прирост: из загруженного скриншота или из src/data/snapshot.ts. */
-  const activeSnapshot = snapshotMembers;
+  const activeSnapshot = snapshotOverride?.members ?? snapshotMembers;
   const channelData = useMemo(() => {
     return BASE_CHANNEL_DATA.map((row) => {
       const username = row.channel.replace('@', '');
@@ -1172,9 +1292,9 @@ User-Agent: ${navigator.userAgent}
     name: d.channel.replace('@', ''),
     'Волна 1': d.growth1,
     'Волна 2': d.growth2,
-    [`Волна ${SNAPSHOT_WAVE_NUMBER}`]: d.growth3,
+    [`Волна ${snapshotWaveNumber}`]: d.growth3,
     'Итого': d.total,
-  })), [channelData]);
+  })), [channelData, snapshotWaveNumber]);
 
   /** Средний прирост по каналам (округлённо). */
   const averageGrowth = useMemo(() => {
@@ -1186,7 +1306,7 @@ User-Agent: ${navigator.userAgent}
   /** Длительность наблюдения: от начала отчёта до снапшота (например "7ч" или "1д 13ч"). */
   const observationLabel = useMemo(() => {
     const start = new Date(REPORT_START_DATETIME).getTime();
-    const end = new Date(SNAPSHOT_DATETIME).getTime();
+    const end = new Date(snapshotDatetime).getTime();
     const hours = (end - start) / (1000 * 60 * 60);
     if (hours >= 24) {
       const days = Math.floor(hours / 24);
@@ -1194,7 +1314,7 @@ User-Agent: ${navigator.userAgent}
       return h > 0 ? `${days}д ${h}ч` : `${days}д`;
     }
     return `${Math.round(hours)}ч`;
-  }, []);
+  }, [snapshotDatetime]);
 
   /** Топ-4 канала по приросту (актуальные данные из снапшота). */
   const growthLeaders = useMemo(() => {
@@ -1419,8 +1539,8 @@ User-Agent: ${navigator.userAgent}
       },
       {
         id: 'T4',
-        label: SNAPSHOT_TIME,
-        title: `Снапшот (${SNAPSHOT_TIME})`,
+        label: snapshotTime,
+        title: `Снапшот (${snapshotTime})`,
         beneficiary: t4Bene,
         stable: t4Stable,
         donor: t4Donor,
@@ -1453,13 +1573,112 @@ User-Agent: ${navigator.userAgent}
       stableTotalGrowth,
       donorTotalGrowth,
     };
+  }, [channelData, snapshotTime]);
+
+  const tableDataView = useMemo(() => {
+    const q = tableQuery.trim().toLowerCase();
+    const filtered = channelData.filter((r) => {
+      const matchType = tableType === 'all' ? true : r.type === tableType;
+      const matchQuery = !q ? true : String(r.channel || '').toLowerCase().includes(q);
+      return matchType && matchQuery;
+    });
+
+    const key = tableSort.key;
+    const dirMul = tableSort.dir === 'asc' ? 1 : -1;
+
+    const getVal = (r: any): string | number => {
+      if (key === 'channel') return String(r.channel || '');
+      return Number(r[key] ?? 0);
+    };
+
+    const sorted = [...filtered].sort((a, b) => {
+      const av = getVal(a);
+      const bv = getVal(b);
+      if (typeof av === 'string' || typeof bv === 'string') {
+        return String(av).localeCompare(String(bv), 'ru') * dirMul;
+      }
+      return (Number(av) - Number(bv)) * dirMul;
+    });
+
+    return sorted;
+  }, [channelData, tableQuery, tableType, tableSort]);
+
+  const toggleTableSort = (key: TableSortKey) => {
+    setTableSort((prev) => {
+      if (prev.key === key) return { key, dir: prev.dir === 'desc' ? 'asc' : 'desc' };
+      return { key, dir: key === 'channel' ? 'asc' : 'desc' };
+    });
+  };
+
+  const sortMark = (key: TableSortKey) => (tableSort.key === key ? (tableSort.dir === 'desc' ? '↓' : '↑') : '');
+
+  /** Категории для волны 1 (growth1): термин, определение, строка каналов. */
+  const wave1Categories = useMemo(() => {
+    const sorted = [...channelData].sort((a, b) => b.growth1 - a.growth1);
+    if (sorted.length === 0) return [];
+    const maxG = sorted[0].growth1;
+    const top = sorted.filter((r) => r.growth1 === maxG);
+    const strong = sorted.filter((r) => r.growth1 < maxG && r.growth1 >= Math.max(maxG - 6, 0));
+    const bottom3 = sorted.slice(-3);
+    const fmt = (arr: typeof sorted) => arr.map((r) => `${r.channel} (${fmtSignedInt(r.growth1)})`).join(', ');
+    const categories: { term: string; definition: string; line: string }[] = [];
+    if (top.length) {
+      categories.push({
+        term: 'Максимальный импульс',
+        definition: 'Максимальный прирост в первые 30 минут (11:00→11:30). Показатель лучшей конверсии “витрины” папки в раннем окне.',
+        line: fmt(top),
+      });
+    }
+    if (strong.length) {
+      categories.push({
+        term: 'Сильный старт',
+        definition: 'Прирост близок к максимуму в раннем окне. Обычно означает быстрый захват внимания или удачное попадание в интерес аудитории.',
+        line: fmt(strong),
+      });
+    }
+    if (bottom3.length) {
+      categories.push({
+        term: 'Поздний/слабый старт',
+        definition: 'Низкий прирост в первые 30 минут. Сам рост может быть перенесён во 2-ю волну или в хвост (позже в течение дня).',
+        line: fmt(bottom3),
+      });
+    }
+    return categories;
   }, [channelData]);
 
-  /** Таблица: всегда сортировка по приросту (Итого) от большего к меньшему. */
-  const tableDataSorted = useMemo(
-    () => [...channelData].sort((a, b) => b.total - a.total),
-    [channelData]
-  );
+  /** Категории для волны 2 (growth2): термин, определение, строка каналов. */
+  const wave2Categories = useMemo(() => {
+    const sorted = [...channelData].sort((a, b) => b.growth2 - a.growth2);
+    if (sorted.length === 0) return [];
+    const maxG = sorted[0].growth2;
+    const top = sorted.filter((r) => r.growth2 === maxG);
+    const strong = sorted.filter((r) => r.growth2 < maxG && r.growth2 >= Math.max(maxG - 8, 0));
+    const mid = sorted.slice(Math.max(0, Math.floor(sorted.length / 2) - 2), Math.min(sorted.length, Math.floor(sorted.length / 2) + 2));
+    const fmt = (arr: typeof sorted) => arr.map((r) => `${r.channel} (${fmtSignedInt(r.growth2)})`).join(', ');
+    const categories: { term: string; definition: string; line: string }[] = [];
+    if (top.length) {
+      categories.push({
+        term: 'Абсолютный лидер',
+        definition: 'Максимальный прирост во 2-й волне (11:30→15:30).',
+        line: fmt(top),
+      });
+    }
+    if (strong.length) {
+      categories.push({
+        term: 'Сильный рост',
+        definition: 'Прирост заметно выше среднего во 2-й волне. Часто выглядит как “догоняющая” динамика после старта или сильный дневной импульс.',
+        line: fmt(strong),
+      });
+    }
+    if (mid.length) {
+      categories.push({
+        term: 'Стабильная группа',
+        definition: 'Средняя зона по росту во 2-й волне — без экстремумов, но с понятной динамикой.',
+        line: fmt(mid),
+      });
+    }
+    return categories;
+  }, [channelData]);
 
   /** Категории для волны среза (growth3): как у волн 1 и 2 — термин, определение, строка каналов. */
   const wave3Categories = useMemo(() => {
@@ -1497,8 +1716,113 @@ User-Agent: ${navigator.userAgent}
     return categories;
   }, [channelData]);
 
+  const autoConclusion = useMemo(() => {
+    const top = [...channelData].sort((a, b) => b.total - a.total).slice(0, 3);
+    const donors = channelData.filter((r) => r.type === 'donor').map((r) => r.channel);
+    const bene = channelData.filter((r) => r.type === 'beneficiary').map((r) => r.channel);
+    const topLine = top.map((r) => `${r.channel} (${fmtSignedInt(r.total)})`).join(', ');
+    const donorsLine = donors.slice(0, 4).join(', ') + (donors.length > 4 ? ` (+${donors.length - 4})` : '');
+    const beneLine = bene.slice(0, 4).join(', ') + (bene.length > 4 ? ` (+${bene.length - 4})` : '');
+
+    const intro = folderFadeSignals.isFading
+      ? `По данным снапшота (${snapshotLabel}) эффект папки уже в основном исчерпан: поздний рост (“хвост”) стал маленьким, а дальнейшая динамика чаще объясняется инерцией и собственным постингом.`
+      : `По данным снапшота (${snapshotLabel}) эффект папки ещё заметен: часть прироста продолжает распределяться между каналами, но уже не доминирует во всех случаях.`;
+
+    const bullets = [
+      `Топ по итогу: ${topLine}. Средний прирост по каналам: ${fmtSignedInt(averageGrowth)}.`,
+      `Поздний прирост (“хвост”, волна ${snapshotWaveNumber}: 15:30 → ${snapshotTime}) у “типичного” канала — медианная доля ${fmtPct(folderFadeSignals.tailShareMedian, 1)}; сумма хвоста: ${fmtSignedInt(folderFadeSignals.tailSum)}.`,
+      `Роли в экосистеме сохраняются: доноры (${donorsLine}) быстрее “насыщаются”, а бенефициары (${beneLine}) чаще добирают новую аудиторию.`,
+    ];
+
+    const closing = `Вывод: папка работает как механизм перераспределения внимания между каналами (особенно между ядром и периферией), но устойчивый рост после первичного импульса зависит от собственной активности каналов.`;
+
+    return { intro, bullets, closing };
+  }, [
+    channelData,
+    snapshotLabel,
+    snapshotTime,
+    snapshotWaveNumber,
+    folderFadeSignals.isFading,
+    folderFadeSignals.tailShareMedian,
+    folderFadeSignals.tailSum,
+    averageGrowth,
+  ]);
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const openSnapshotPicker = () => {
+    snapshotFileInputRef.current?.click();
+  };
+
+  const resetSnapshotToDefault = () => {
+    setSnapshotUploadError(null);
+    setSnapshotOverride(null);
+    if (snapshotFileInputRef.current) snapshotFileInputRef.current.value = '';
+  };
+
+  const readFileAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+      reader.readAsDataURL(file);
+    });
+
+  const formatSnapshotLabel = (d: Date) => {
+    const date = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return `${date}, ${time}`;
+  };
+
+  const handleSnapshotFile = async (file: File) => {
+    setSnapshotUploadError(null);
+    setSnapshotUploading(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const res = await fetch('/api/parse-snapshot-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        try {
+          const j = JSON.parse(text);
+          throw new Error(j.error || res.statusText);
+        } catch {
+          throw new Error(text || res.statusText || 'Ошибка при разборе скриншота');
+        }
+      }
+      const data = text ? JSON.parse(text) : {};
+      const members = data?.members;
+      if (!members || typeof members !== 'object') {
+        throw new Error('Пустой или некорректный ответ: members не найден');
+      }
+
+      const now = new Date();
+      const nextWave = (snapshotOverride?.waveNumber ?? SNAPSHOT_WAVE_NUMBER) + 1;
+      const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+      setSnapshotOverride({
+        members,
+        datetime: now.toISOString(),
+        time,
+        label: formatSnapshotLabel(now),
+        waveNumber: nextWave,
+      });
+    } catch (e: any) {
+      setSnapshotUploadError(e?.message || 'Ошибка при загрузке скриншота');
+    } finally {
+      setSnapshotUploading(false);
+    }
+  };
+
+  const onSnapshotFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    void handleSnapshotFile(file);
   };
 
   return (
@@ -1509,7 +1833,15 @@ User-Agent: ${navigator.userAgent}
       {/* Loading Screen */}
       {isLoading && <LoadingScreen />}
       
-      <div className={`min-h-screen bg-black text-white transition-opacity duration-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+      <div id="top" className={`min-h-screen bg-black text-white transition-opacity duration-500 ${showContent ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Skip link for keyboard users */}
+        <a
+          href="#content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[999] focus:bg-white focus:text-black focus:px-4 focus:py-2 focus:rounded-lg"
+        >
+          Перейти к отчёту
+        </a>
+
         {/* Diagnostics Banner */}
         <AnimatePresence>
           {showDiagnostics && (
@@ -1564,11 +1896,60 @@ User-Agent: ${navigator.userAgent}
           transition={isMobile ? { duration: 0.3 } : { type: "spring", stiffness: 100, damping: 20 }}
           className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/20"
         >
-          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 gap-3">
             <h1 className="text-base md:text-xl tracking-[0.2em] font-light">
               CAREER HUB
             </h1>
-            <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            <nav className="hidden lg:flex items-center gap-3 text-xs text-white/60 overflow-x-auto max-w-[55vw]">
+              <a href="#data" className="hover:text-white transition-colors whitespace-nowrap">Лидеры</a>
+              <a href="#waves" className="hover:text-white transition-colors whitespace-nowrap">Волны</a>
+              <a href="#charts" className="hover:text-white transition-colors whitespace-nowrap">Графики</a>
+              <a href="#insights" className="hover:text-white transition-colors whitespace-nowrap">Инсайты</a>
+              <a href="#fading" className="hover:text-white transition-colors whitespace-nowrap">Эффект папки</a>
+              <a href="#table" className="hover:text-white transition-colors whitespace-nowrap">Таблица</a>
+              <a href="#glossary" className="hover:text-white transition-colors whitespace-nowrap">Глоссарий</a>
+              <a href="#conclusion" className="hover:text-white transition-colors whitespace-nowrap">Вывод</a>
+            </nav>
+            <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+              <input
+                ref={snapshotFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onSnapshotFileChange}
+              />
+
+              <div className="hidden md:flex items-center gap-2 text-xs text-white/40">
+                <span className="whitespace-nowrap">Снапшот:</span>
+                <span className="text-white/60 whitespace-nowrap">{snapshotLabel}</span>
+                {snapshotOverride && (
+                  <span className="text-amber-300/80 whitespace-nowrap">(из скрина)</span>
+                )}
+              </div>
+
+              <motion.button
+                type="button"
+                onClick={openSnapshotPicker}
+                whileHover={!isMobile ? { scale: 1.04 } : undefined}
+                whileTap={{ scale: 0.98 }}
+                disabled={snapshotUploading}
+                className="border border-white/25 px-3 md:px-4 py-1 text-xs md:text-sm rounded-full hover:bg-white/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Загрузить новый скрин «Добавить папку» и пересчитать отчёт"
+              >
+                {snapshotUploading ? 'Разбор…' : 'Обновить по скрину'}
+              </motion.button>
+
+              {snapshotOverride && (
+                <button
+                  type="button"
+                  onClick={resetSnapshotToDefault}
+                  className="text-xs md:text-sm text-white/50 hover:text-white/70 transition-colors px-2"
+                  title="Вернуться к данным из snapshot.ts"
+                >
+                  Сбросить
+                </button>
+              )}
+
               {/* Open in Browser button for Telegram */}
               {typeof navigator !== 'undefined' && navigator.userAgent.includes('Telegram') && (
                 <button
@@ -1600,10 +1981,14 @@ User-Agent: ${navigator.userAgent}
               </motion.a>
             </div>
           </div>
+          <div className="h-px bg-white/10">
+            <motion.div className="h-px bg-white/40" style={{ width: progressWidth }} />
+          </div>
         </motion.header>
 
+        <main id="content">
         {/* Hero Section */}
-        <section ref={heroRef} className="min-h-screen flex flex-col border-b border-white/20 pt-16 md:pt-20 relative overflow-hidden">
+        <section ref={heroRef} className="min-h-screen flex flex-col border-b border-white/20 pt-16 md:pt-20 relative overflow-hidden scroll-mt-28">
           <div className="flex-1 flex items-center px-4 md:px-12 lg:px-20">
             <motion.div
               style={!isMobile ? { y, opacity } : {}}
@@ -1667,10 +2052,10 @@ User-Agent: ${navigator.userAgent}
                 между каналами папки Career Hub.
               </p>
               <p className="text-xs md:text-sm text-white/60 mt-4">
-                8 февраля 2026 • 11:00–18:06
+                Период наблюдения: {REPORT_START_LABEL} → {snapshotLabel}
               </p>
               <p className="text-xs md:text-sm text-white/50 mt-2">
-                Актуальные подписчики: {SNAPSHOT_LABEL}
+                Контрольные точки: 11:00 → 11:30 → 15:30 → 18:06 → {snapshotTime}
               </p>
             </motion.div>
             <motion.div 
@@ -1682,11 +2067,11 @@ User-Agent: ${navigator.userAgent}
               whileHover={{ scale: 1.02 }}
             >
               <div className="text-center">
-                <div className="text-xl md:text-3xl mb-2">Scroll Down</div>
+                <div className="text-xl md:text-3xl mb-2">Листайте вниз</div>
                 <motion.div 
                   className="text-2xl md:text-4xl"
                   animate={{ y: [0, 10, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  transition={{ repeat: (isMobile || prefersReducedMotion) ? 0 : 3, duration: 1.2, ease: "easeInOut" }}
                 >
                   ↓
                 </motion.div>
@@ -1715,7 +2100,7 @@ User-Agent: ${navigator.userAgent}
               transition={{ delay: 0.2 }}
               className="p-8 md:p-12 border-b md:border-b-0 md:border-r border-white/20"
             >
-              <div className="text-6xl md:text-8xl font-light mb-4">+{averageGrowth}</div>
+              <div className="text-6xl md:text-8xl font-light mb-4">+{fmtInt(averageGrowth)}</div>
               <div className="text-base md:text-xl tracking-wider">СРЕДНИЙ ПРИРОСТ</div>
               <div className="text-xs md:text-sm text-white/60 mt-2">Подписчиков за период</div>
             </motion.div>
@@ -1735,7 +2120,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Top Channels */}
-        <section className="border-b border-white/20" id="data">
+        <section className="border-b border-white/20 scroll-mt-28" id="data">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -1776,16 +2161,16 @@ User-Agent: ${navigator.userAgent}
                     className="text-5xl font-light mb-6"
                     whileHover={{ scale: 1.05 }}
                   >
-                    +{channel.total}
+                    +{fmtInt(channel.total)}
                   </motion.div>
                   <div className="space-y-2 text-sm text-white/60">
                     <div className="flex justify-between border-b border-white/10 pb-2">
                       <span>База</span>
-                      <span className="text-white">{channel.base}</span>
+                      <span className="text-white">{fmtInt(channel.base)}</span>
                     </div>
                     <div className="flex justify-between border-b border-white/10 pb-2">
                       <span>Сейчас</span>
-                      <span className="text-white">{channel.final}</span>
+                      <span className="text-white">{fmtInt(channel.final)}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -1795,7 +2180,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Wave Analysis */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="waves">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-black">
             <div className="p-6 md:p-12 lg:p-20 bg-black">
               <motion.div
@@ -1806,27 +2191,12 @@ User-Agent: ${navigator.userAgent}
                 <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 1</h3>
                 <p className="text-white/60 mb-6">11:00 → 11:30</p>
                 <div className="space-y-6">
-                  <div>
-                    <TermWithTooltip 
-                      term="Максимальный импульс" 
-                      definition="Прирост +50 подписчиков в первой волне. Показатель очень высокой конверсии аудитории в первые минуты."
-                    />
-                    <div className="text-xl">@tooltipp, @nix_ux_view (+50)</div>
-                  </div>
-                  <div>
-                    <TermWithTooltip 
-                      term="Сильный старт" 
-                      definition="Прирост +45–48 подписчиков в первой волне. Хорошая начальная динамика с быстрой активацией аудитории."
-                    />
-                    <div className="text-xl">@DesignDictatorship, @prodtomorrow (+48)</div>
-                  </div>
-                  <div>
-                    <TermWithTooltip 
-                      term="Поздний старт" 
-                      definition="Прирост +11–16 подписчиков в первой волне. Основной рост смещён во вторую волну из-за тайминга постов или специфики аудитории."
-                    />
-                    <div className="text-xl">@visuaaaals (+16), @yuliapohilko (+11)</div>
-                  </div>
+                  {wave1Categories.map((cat) => (
+                    <div key={cat.term}>
+                      <TermWithTooltip term={cat.term} definition={cat.definition} />
+                      <div className="text-xl">{cat.line}</div>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             </div>
@@ -1840,27 +2210,12 @@ User-Agent: ${navigator.userAgent}
                 <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА 2</h3>
                 <p className="text-white/60 mb-6">11:30 → ~15:30</p>
                 <div className="space-y-6">
-                  <div>
-                    <TermWithTooltip 
-                      term="Абсолютный лидер" 
-                      definition="Канал с максимальным приростом в конкретной волне. Показатель наивысшей эффективности в данном временном отрезке."
-                    />
-                    <div className="text-xl">@visuaaaals (+76)</div>
-                  </div>
-                  <div>
-                    <TermWithTooltip 
-                      term="Сильный рост" 
-                      definition="Прирост +45–48 подписчиков в первой волне. Хорошая начальная динамика с быстрой активацией аудитории."
-                    />
-                    <div className="text-xl">@yuliapohilko (+48)</div>
-                  </div>
-                  <div>
-                    <TermWithTooltip 
-                      term="Стабильная группа" 
-                      definition="Каналы с равномерным приростом в обеих волнах (+30–40). Показывают предсказуемую динамику без резких скачков."
-                    />
-                    <div className="text-xl">@tooltipp, @lx_grzdv_links, @sshultse (+34…+37)</div>
-                  </div>
+                  {wave2Categories.map((cat) => (
+                    <div key={cat.term}>
+                      <TermWithTooltip term={cat.term} definition={cat.definition} />
+                      <div className="text-xl">{cat.line}</div>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             </div>
@@ -1871,8 +2226,8 @@ User-Agent: ${navigator.userAgent}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА {SNAPSHOT_WAVE_NUMBER}</h3>
-                <p className="text-white/60 mb-6">15:30 → {SNAPSHOT_TIME}</p>
+                <h3 className="text-4xl md:text-5xl font-light mb-8 tracking-tight">ВОЛНА {snapshotWaveNumber}</h3>
+                <p className="text-white/60 mb-6">15:30 → {snapshotTime}</p>
                 <div className="space-y-6">
                   {wave3Categories.map((cat) => (
                     <div key={cat.term}>
@@ -1887,7 +2242,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Chart Section */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="charts">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -1932,7 +2287,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Insights */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="insights">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -1952,7 +2307,7 @@ User-Agent: ${navigator.userAgent}
                 title="ДОНОРЫ ЭКОСИСТЕМЫ"
               >
                 <p className="text-sm text-white/70 mb-3">
-                  У каналов-доноров ({insightData.donors.map((d) => d.channel).join(', ')}) в волне {SNAPSHOT_WAVE_NUMBER} прирост небольшой: {insightData.donorWave3Sample}.
+                  У каналов-доноров ({insightData.donors.map((d) => d.channel).join(', ')}) в волне {snapshotWaveNumber} прирост небольшой: {insightData.donorWave3Sample}.
                 </p>
                 <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
                   <li>В той же волне сильнее выросли другие: {insightData.othersWave3Sample}</li>
@@ -1968,7 +2323,7 @@ User-Agent: ${navigator.userAgent}
                 title="ГЛАВНЫЕ БЕНЕФИЦИАРЫ"
               >
                 <p className="text-sm text-white/70 mb-3">
-                  Итоговый рост с {REPORT_START_LABEL} до {SNAPSHOT_LABEL} — кто сильнее всего добирал новую аудиторию:
+                  Итоговый рост с {REPORT_START_LABEL} до {snapshotLabel} — кто сильнее всего добирал новую аудиторию:
                 </p>
                 <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
                   {insightData.topByTotal.map((r) => (
@@ -1991,7 +2346,7 @@ User-Agent: ${navigator.userAgent}
                   Рост сам по себе не измеряет «силу». Канал может быть сильным и расти меньше из-за насыщения аудитории.
                 </p>
                 <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  <li>Ядро упирается в потолок быстрее: у доноров в волне {SNAPSHOT_WAVE_NUMBER} прирост всего {insightData.donorWave3Sample}</li>
+                  <li>Ядро упирается в потолок быстрее: у доноров в волне {snapshotWaveNumber} прирост всего {insightData.donorWave3Sample}</li>
                   <li>При этом папка продолжает «докармливать» другие каналы поздними волнами</li>
                 </ul>
                 <p className="text-sm text-white/60">Гипотеза: низкий прирост чаще означает высокий overlap, а не слабый контент.</p>
@@ -2005,7 +2360,7 @@ User-Agent: ${navigator.userAgent}
                 title="ДОНОРСТВО ≠ ТАЙМИНГ"
               >
                 <p className="text-sm text-white/70 mb-3">
-                  «Донорский» эффект проявляется как перераспределение роста: у доноров малый прирост по волне {SNAPSHOT_WAVE_NUMBER}, у других — до +{Math.max(...channelData.map((r) => r.growth3 ?? 0))} в том же срезе.
+                  «Донорский» эффект проявляется как перераспределение роста: у доноров малый прирост по волне {snapshotWaveNumber}, у других — до +{Math.max(...channelData.map((r) => r.growth3 ?? 0))} в том же срезе.
                 </p>
                 <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
                   <li>Гипотеза: донорство определяется насыщенностью аудитории (overlap), тайминг лишь запускает переток</li>
@@ -2026,7 +2381,7 @@ User-Agent: ${navigator.userAgent}
                   {insightData.wave2Leader && (
                     <li><strong className="text-white/80">{insightData.wave2Leader.channel}</strong> — лидер волны 2 (+{insightData.wave2Leader.growth2})</li>
                   )}
-                  <li>Диапазоны: волна 2 {insightData.wave2Range}, волна {SNAPSHOT_WAVE_NUMBER} {insightData.wave3Range}</li>
+                  <li>Диапазоны: волна 2 {insightData.wave2Range}, волна {snapshotWaveNumber} {insightData.wave3Range}</li>
                 </ul>
                 <p className="text-sm text-white/60">Гипотезы: задержка постинга, эффект «второго захода» аудитории, лучшая конверсия после просмотра витрины.</p>
               </InsightCard>
@@ -2070,7 +2425,7 @@ User-Agent: ${navigator.userAgent}
                 title="КТО «ПОЛУЧИЛ» В ПОСЛЕДНЕМ СРЕЗЕ"
               >
                 <p className="text-sm text-white/70 mb-3">
-                  В волне {SNAPSHOT_WAVE_NUMBER} (15:30 → {SNAPSHOT_TIME}) максимальный прирост получили:
+                  В волне {snapshotWaveNumber} (15:30 → {snapshotTime}) максимальный прирост получили:
                 </p>
                 <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
                   <li><strong className="text-white/80">{insightData.wave3Leaders.map((r) => `${r.channel} +${r.growth3}`).join(', ')}</strong></li>
@@ -2082,7 +2437,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Folder effect is fading */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="fading">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -2290,7 +2645,7 @@ User-Agent: ${navigator.userAgent}
                 title="ХВОСТ СТАЛ МАЛЕНЬКИМ"
               >
                 <p className="text-sm text-white/70 mb-3">
-                  Медианная доля хвоста (волна {SNAPSHOT_WAVE_NUMBER}: 15:30 → {SNAPSHOT_TIME}) в общем росте —{' '}
+                  Медианная доля хвоста (волна {snapshotWaveNumber}: 15:30 → {snapshotTime}) в общем росте —{' '}
                   <strong className="text-white/85">{fmtPct(folderFadeSignals.tailShareMedian, 1)}</strong>. Это означает, что у «типичного»
                   канала почти весь прирост уже случился раньше.
                 </p>
@@ -2378,7 +2733,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Data Table */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="table">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -2394,39 +2749,126 @@ User-Agent: ${navigator.userAgent}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-white/60 mb-12 text-sm flex items-center gap-2"
+              className="text-white/60 mb-8 text-sm flex items-center gap-2"
             >
               <motion.span
                 animate={{ opacity: [0.4, 1, 0.4] }}
-                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                transition={{ repeat: prefersReducedMotion ? 0 : 6, duration: 2, ease: "easeInOut" }}
                 className="inline-block w-2 h-2 bg-white/60 rounded-full"
               />
               Кликните на строку или иконку <TrendingUp className="w-4 h-4 inline" />, чтобы увидеть график роста канала
             </motion.p>
 
+            <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">Поиск по каналу</span>
+                  <input
+                    value={tableQuery}
+                    onChange={(e) => setTableQuery(e.target.value)}
+                    placeholder="например: @visuaaaals"
+                    className="w-full sm:w-72 bg-black border border-white/15 rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/30 focus:outline-none focus:border-white/30"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">Тип</span>
+                  <select
+                    value={tableType}
+                    onChange={(e) => setTableType(e.target.value as any)}
+                    className="w-full sm:w-48 bg-black border border-white/15 rounded-lg px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-white/30"
+                  >
+                    <option value="all">Все</option>
+                    <option value="beneficiary">Бенефициары</option>
+                    <option value="stable">Стабильные</option>
+                    <option value="donor">Доноры</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="text-xs text-white/50">
+                Показано: <span className="text-white/70">{tableDataView.length}</span> / {channelData.length}. Сортировка: клик по заголовку колонки.
+              </div>
+            </div>
+
+            {snapshotUploadError && (
+              <div className="mb-6 text-sm text-amber-300/90 border border-amber-500/20 bg-amber-500/5 rounded-xl px-4 py-3">
+                {snapshotUploadError}
+                <div className="text-xs text-white/50 mt-2">
+                  Нужен запущенный <code className="text-white/70">npm run dev</code> и переменная <code className="text-white/70">OPENAI_API_KEY</code> в <code className="text-white/70">.env</code>.
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto relative">
-              <table className="w-full text-sm border-collapse relative">
+              <table className="w-full text-sm border-collapse relative min-w-[980px]">
                 <thead>
                   <tr className="border-b border-white/20">
-                    <th className="text-left py-4 px-4 font-light text-base">Канал</th>
-                    <th className="text-right py-4 px-4 font-light">11:00</th>
-                    <th className="text-right py-4 px-4 font-light">11:30</th>
-                    <th className="text-right py-4 px-4 font-light">15:30</th>
-                    <th className="text-right py-4 px-4 font-light">18:06</th>
-                    <th className="text-right py-4 px-4 font-light" title={SNAPSHOT_LABEL}>Срез ({SNAPSHOT_TIME})</th>
-                    <th className="text-right py-4 px-4 font-light">Волна 1</th>
-                    <th className="text-right py-4 px-4 font-light">Волна 2</th>
-                    <th className="text-right py-4 px-4 font-light">Волна {SNAPSHOT_WAVE_NUMBER}</th>
-                    <th className="text-right py-4 px-4 font-light">Итого</th>
+                    <th className="text-left py-3 px-4 font-light text-base bg-black/95 backdrop-blur border-b border-white/20">
+                      <button
+                        type="button"
+                        onClick={() => toggleTableSort('channel')}
+                        className="hover:text-white transition-colors flex items-center gap-2"
+                      >
+                        <span>Канал</span>
+                        <span className="text-white/40 text-xs">{sortMark('channel')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('base')} className="hover:text-white transition-colors w-full text-right">
+                        11:00 <span className="text-white/40 text-xs ml-1">{sortMark('base')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('wave1')} className="hover:text-white transition-colors w-full text-right">
+                        11:30 <span className="text-white/40 text-xs ml-1">{sortMark('wave1')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('wave2')} className="hover:text-white transition-colors w-full text-right">
+                        15:30 <span className="text-white/40 text-xs ml-1">{sortMark('wave2')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light sticky z-20 bg-black/95 backdrop-blur border-b border-white/20" style={{ top: 0 }}>
+                      <button type="button" onClick={() => toggleTableSort('current')} className="hover:text-white transition-colors w-full text-right">
+                        18:06 <span className="text-white/40 text-xs ml-1">{sortMark('current')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20" title={snapshotLabel}>
+                      <button type="button" onClick={() => toggleTableSort('final')} className="hover:text-white transition-colors w-full text-right">
+                        Срез ({snapshotTime}) <span className="text-white/40 text-xs ml-1">{sortMark('final')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('growth1')} className="hover:text-white transition-colors w-full text-right">
+                        Волна 1 <span className="text-white/40 text-xs ml-1">{sortMark('growth1')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('growth2')} className="hover:text-white transition-colors w-full text-right">
+                        Волна 2 <span className="text-white/40 text-xs ml-1">{sortMark('growth2')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('growth3')} className="hover:text-white transition-colors w-full text-right">
+                        Волна {snapshotWaveNumber} <span className="text-white/40 text-xs ml-1">{sortMark('growth3')}</span>
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20">
+                      <button type="button" onClick={() => toggleTableSort('total')} className="hover:text-white transition-colors w-full text-right">
+                        Итого <span className="text-white/40 text-xs ml-1">{sortMark('total')}</span>
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tableDataSorted.map((row, idx) => (
+                  {tableDataView.map((row, idx) => (
                     <TableRow
                       key={row.channel}
                       row={row}
                       idx={idx}
                       onGenerateInsight={(r) => setInsightModalRow(r)}
+                      snapshotTime={snapshotTime}
+                      snapshotWaveNumber={snapshotWaveNumber}
                     />
                   ))}
                 </tbody>
@@ -2440,14 +2882,14 @@ User-Agent: ${navigator.userAgent}
             <InsightModal
               key={insightModalRow.channel}
               channel={insightModalRow.channel}
-              promptText={buildChannelInsightPrompt(insightModalRow, channelData, SNAPSHOT_LABEL)}
+              promptText={buildChannelInsightPrompt(insightModalRow, channelData, snapshotLabel)}
               onClose={() => setInsightModalRow(null)}
             />
           )}
         </AnimatePresence>
 
         {/* Glossary */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="glossary">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.h3
               initial={{ opacity: 0 }}
@@ -2491,9 +2933,9 @@ User-Agent: ${navigator.userAgent}
                 transition={{ delay: 0.07 }}
                 className="bg-black p-6 md:p-8"
               >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна {SNAPSHOT_WAVE_NUMBER}</div>
+                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна {snapshotWaveNumber}</div>
                 <p className="text-white/80">
-                  Срез данных: период с 15:30 до момента снапшота ({SNAPSHOT_LABEL}). Каждый новый скрин «Добавить папку» задаёт следующий срез — в snapshot.ts укажите новый SNAPSHOT_DATETIME и при необходимости увеличьте SNAPSHOT_WAVE_NUMBER.
+                  Срез данных: период с 15:30 до момента снапшота ({snapshotLabel}). Новый скрин можно загрузить прямо в интерфейсе отчёта — данные и вычисляемые блоки пересчитаются автоматически.
                 </p>
               </motion.div>
 
@@ -2519,7 +2961,7 @@ User-Agent: ${navigator.userAgent}
               >
                 <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Сильный старт</div>
                 <p className="text-white/80">
-                  Прирост +45–48 подписчков в первой волне. Хорошая начальная динамика с быстрой активацией аудитории.
+                  Прирост +45–48 подписчиков в первой волне. Хорошая начальная динамика с быстрой активацией аудитории.
                 </p>
               </motion.div>
 
@@ -2556,9 +2998,9 @@ User-Agent: ${navigator.userAgent}
                 transition={{ delay: 0.3 }}
                 className="bg-black p-6 md:p-8"
               >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Доноыы экосистемы</div>
+                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Доноры экосистемы</div>
                 <p className="text-white/80">
-                  Каналы с большой устоявшейся аудиторией, которые делятся трафиком с дрыгими канаыами папки больше, чем получают сами.
+                  Каналы с большой устоявшейся аудиторией, которые делятся трафиком с другими каналами папки больше, чем получают сами.
                 </p>
               </motion.div>
 
@@ -2605,7 +3047,7 @@ User-Agent: ${navigator.userAgent}
         </section>
 
         {/* Conclusion */}
-        <section className="border-b border-white/20">
+        <section className="border-b border-white/20 scroll-mt-28" id="conclusion">
           <div className="p-6 md:p-12 lg:p-20">
             <motion.div
               initial={{ opacity: 0 }}
@@ -2629,10 +3071,10 @@ User-Agent: ${navigator.userAgent}
               >
                 <div className="border-l-4 border-white pl-8 md:pl-12 space-y-6">
                   <p className="text-xl md:text-3xl font-light text-white leading-relaxed">
-                    {CONCLUSION.intro}
+                    {(snapshotOverride ? autoConclusion : CONCLUSION).intro}
                   </p>
                   <div className="space-y-4 text-lg md:text-xl text-white/80">
-                    {CONCLUSION.bullets.map((bullet, i) => (
+                    {(snapshotOverride ? autoConclusion : CONCLUSION).bullets.map((bullet, i) => (
                       <p key={i} className="flex items-start gap-4">
                         <span className="text-white/40 flex-shrink-0">→</span>
                         <span dangerouslySetInnerHTML={{ __html: bullet.replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-white">$1</span>') }} />
@@ -2647,9 +3089,13 @@ User-Agent: ${navigator.userAgent}
                     className="pt-8 border-t border-white/20 mt-8"
                   >
                     <p className="text-white/60 text-sm md:text-base">
-                      {CONCLUSION.closing}
+                      {(snapshotOverride ? autoConclusion : CONCLUSION).closing}
                     </p>
-                    {CONCLUSION_GENERATED_AT && (
+                    {snapshotOverride ? (
+                      <p className="text-white/40 text-xs mt-3">
+                        Вывод сформирован автоматически по загруженному скриншоту (без OpenAI). Чтобы обновить AI-версию в коде: <code className="text-white/60">npm run generate-conclusion</code>
+                      </p>
+                    ) : CONCLUSION_GENERATED_AT && (
                       <p className="text-white/40 text-xs mt-3">
                         Вывод сгенерирован по данным от {new Date(CONCLUSION_GENERATED_AT).toLocaleString('ru-RU')}. Обновить: <code className="text-white/60">npm run generate-conclusion</code>
                       </p>
@@ -2670,13 +3116,13 @@ User-Agent: ${navigator.userAgent}
             </div>
             <div className="text-right">
               <div className="text-white/60 mb-2">
-                Период отчёта: {REPORT_START_LABEL} – {SNAPSHOT_LABEL}
+                Период отчёта: {REPORT_START_LABEL} – {snapshotLabel}
               </div>
               <div className="text-white/60">
-                Текущая дата: {new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                Текущая дата: {new Date().toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </div>
               <div className="text-white/50 text-sm mt-2">
-                Данные актуализированы: {SNAPSHOT_LABEL}
+                Данные актуализированы: {snapshotLabel}
               </div>
             </div>
           </div>
@@ -2692,6 +3138,25 @@ User-Agent: ${navigator.userAgent}
             </button>
           </div>
         </footer>
+        </main>
+
+        {/* Back to top */}
+        <AnimatePresence>
+          {showBackToTop && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              whileHover={!isMobile ? { scale: 1.05 } : undefined}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-6 left-6 z-[60] border border-white/20 bg-black/70 backdrop-blur px-3 py-2 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              ↑ Наверх
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
     </TooltipProvider>
   );

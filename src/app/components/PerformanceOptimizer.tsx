@@ -126,26 +126,11 @@ export const PerformanceOptimizer = () => {
     }
 
     try {
-      // Enable passive event listeners for better scroll performance
+      // Small safe CSS tweaks for mobile UX
       const style = document.createElement('style');
       style.textContent = `
         * {
           -webkit-tap-highlight-color: transparent;
-        }
-        
-        /* Optimize animations for mobile */
-        @media (max-width: 768px) {
-          * {
-            animation-duration: 0.3s !important;
-            transition-duration: 0.3s !important;
-          }
-        }
-        
-        /* Force GPU acceleration */
-        .motion-safe {
-          will-change: transform, opacity;
-          transform: translateZ(0);
-          backface-visibility: hidden;
         }
       `;
       document.head.appendChild(style);

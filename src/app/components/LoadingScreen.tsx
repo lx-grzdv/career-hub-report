@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const LoadingScreen = () => {
   const [progress, setProgress] = useState(0);
   const [showSlowWarning, setShowSlowWarning] = useState(false);
   const [loadTime, setLoadTime] = useState(0);
-  const startTime = Date.now();
+  const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
+    const handleLoad = () => setProgress(100);
+
     // Faster progress updates
     const interval = setInterval(() => {
       setProgress(prev => {
@@ -16,7 +18,7 @@ export const LoadingScreen = () => {
         return Math.min(prev + Math.random() * 15, 95);
       });
       
-      const elapsed = (Date.now() - startTime) / 1000;
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
       setLoadTime(elapsed);
       
       // Show warning after 2 seconds (faster for better UX)
@@ -29,12 +31,12 @@ export const LoadingScreen = () => {
     if (document.readyState === 'complete') {
       setProgress(100);
     } else {
-      window.addEventListener('load', () => setProgress(100));
+      window.addEventListener('load', handleLoad);
     }
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('load', () => setProgress(100));
+      window.removeEventListener('load', handleLoad);
     };
   }, []);
 
