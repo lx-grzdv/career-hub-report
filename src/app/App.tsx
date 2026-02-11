@@ -45,6 +45,27 @@ const prefersReducedMotion = typeof window !== 'undefined'
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
   : false;
 
+function mean(nums: number[]): number {
+  if (!nums.length) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function median(nums: number[]): number {
+  if (!nums.length) return 0;
+  const a = [...nums].sort((x, y) => x - y);
+  const n = a.length;
+  return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+}
+
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x));
+}
+
+function fmtPct(x: number, digits = 1): string {
+  const v = Number.isFinite(x) ? x : 0;
+  return `${(v * 100).toFixed(digits)}%`;
+}
+
 const CountUp = memo(({ end, duration = 2 }: { end: number; duration?: number }) => {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -1101,6 +1122,66 @@ User-Agent: ${navigator.userAgent}
     };
   }, [channelData]);
 
+  /** Сигналы, что эффект папки выдыхается (эвристики по хвосту последней волны). */
+  const folderFadeSignals = useMemo(() => {
+    const rows = channelData;
+    const tail = rows.map((r) => r.growth3 ?? 0);
+    const totals = rows.map((r) => r.total ?? 0);
+    const tailSum = tail.reduce((a, b) => a + b, 0);
+
+    const tailShares = rows.map((r) => {
+      const t = r.total ?? 0;
+      const g = r.growth3 ?? 0;
+      if (!t || t <= 0) return 0;
+      return clamp01(g / t);
+    });
+
+    const pTailLe2 = rows.length ? tail.filter((x) => x <= 2).length / rows.length : 0;
+    const pTailLe5 = rows.length ? tail.filter((x) => x <= 5).length / rows.length : 0;
+
+    const top3Tail = [...tail].sort((a, b) => b - a).slice(0, 3);
+    const tailTop3Share = tailSum > 0 ? clamp01(top3Tail.reduce((a, b) => a + b, 0) / tailSum) : 0;
+
+    const byType = (type: 'beneficiary' | 'donor' | 'stable') => rows.filter((r) => r.type === type);
+    const tailStats = (arr: typeof channelData) => {
+      const g = arr.map((r) => r.growth3 ?? 0);
+      const s = arr.map((r) => {
+        const t = r.total ?? 0;
+        const gg = r.growth3 ?? 0;
+        if (!t || t <= 0) return 0;
+        return clamp01(gg / t);
+      });
+      return {
+        n: arr.length,
+        tailMedian: median(g),
+        tailMean: mean(g),
+        tailShareMedian: median(s),
+      };
+    };
+
+    const bene = tailStats(byType('beneficiary'));
+    const donor = tailStats(byType('donor'));
+
+    // Вердикт: более уверенный тон, но всё равно на эвристиках.
+    const tailShareMed = median(tailShares);
+    const isFading =
+      tailShareMed < 0.1 && // хвост < 10% от total у "типичного" канала
+      pTailLe5 >= 0.5; // у большинства хвост уже маленький
+
+    return {
+      isFading,
+      tailSum,
+      tailMedian: median(tail),
+      tailMean: mean(tail),
+      tailShareMedian: tailShareMed,
+      pTailLe2,
+      pTailLe5,
+      tailTop3Share,
+      bene,
+      donor,
+    };
+  }, [channelData]);
+
   /** Таблица: всегда сортировка по приросту (Итого) от большего к меньшему. */
   const tableDataSorted = useMemo(
     () => [...channelData].sort((a, b) => b.total - a.total),
@@ -1724,6 +1805,124 @@ User-Agent: ${navigator.userAgent}
                 </ul>
               </InsightCard>
             </div>
+          </div>
+        </section>
+
+        {/* Folder effect is fading */}
+        <section className="border-b border-white/20">
+          <div className="p-6 md:p-12 lg:p-20">
+            <motion.h3
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-6xl font-light tracking-tight mb-6"
+            >
+              ЭФФЕКТ ПАПКИ СХОДИТ НА НЕТ
+            </motion.h3>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-white/60 mb-10 text-sm max-w-3xl"
+            >
+              Это не «истина», а чтение формы кривой роста. Мы видим только подписчиков по волнам (без источников и просмотров),
+              поэтому ниже — сигналы, что папка уже дала основной импульс, а дальше рост чаще объясняется собственным постингом и инерцией.
+            </motion.p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch">
+              <InsightCard
+                idx={0}
+                icon={PackageOpen}
+                meta="Доля хвоста"
+                title="ХВОСТ СТАЛ МАЛЕНЬКИМ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Медианная доля хвоста (волна {SNAPSHOT_WAVE_NUMBER}: 15:30 → {SNAPSHOT_TIME}) в общем росте —{' '}
+                  <strong className="text-white/85">{fmtPct(folderFadeSignals.tailShareMedian, 1)}</strong>. Это означает, что у «типичного»
+                  канала почти весь прирост уже случился раньше.
+                </p>
+                <p className="text-sm text-white/60">
+                  Хвост на канал: медиана <strong className="text-white/80">+{Math.round(folderFadeSignals.tailMedian)}</strong>, среднее{' '}
+                  <strong className="text-white/80">+{folderFadeSignals.tailMean.toFixed(1)}</strong>.
+                </p>
+              </InsightCard>
+
+              <InsightCard
+                idx={1}
+                icon={Clock}
+                meta="Плато"
+                title="БОЛЬШИНСТВО УЖЕ НА ПЛАТО"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Доля каналов с хвостом ≤ <strong className="text-white/85">+2</strong>:{' '}
+                  <strong className="text-white/85">{fmtPct(folderFadeSignals.pTailLe2, 0)}</strong>.
+                </p>
+                <p className="text-sm text-white/70 mb-3">
+                  Доля каналов с хвостом ≤ <strong className="text-white/85">+5</strong>:{' '}
+                  <strong className="text-white/85">{fmtPct(folderFadeSignals.pTailLe5, 0)}</strong>.
+                </p>
+                <p className="text-sm text-white/60">
+                  Чем выше эти доли, тем меньше «папочного топлива» остаётся: новые подписки распределяются тонким слоем.
+                </p>
+              </InsightCard>
+
+              <InsightCard
+                idx={2}
+                icon={GitBranch}
+                meta="Концентрация"
+                title="ХВОСТ НЕ “ТАЩИТ” ВСЮ ПАПКУ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Top‑3 каналов дают <strong className="text-white/85">{fmtPct(folderFadeSignals.tailTop3Share, 0)}</strong> всего хвоста.
+                </p>
+                <p className="text-sm text-white/60">
+                  Это похоже на фазу, где нет одного «двигателя папки»: поздний рост распадается на небольшие локальные причины (посты, репосты,
+                  возвращаемость).
+                </p>
+              </InsightCard>
+
+              <InsightCard
+                idx={3}
+                icon={Scale}
+                meta="Перераспределение"
+                title="ПРОФИЛЬ ПАПКИ ЕЩЁ ВИДЕН, НО СЛАБЕЕТ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Бенефициары в хвосте выше доноров: медианная доля хвоста{' '}
+                  <strong className="text-white/85">{fmtPct(folderFadeSignals.bene.tailShareMedian, 1)}</strong> vs{' '}
+                  <strong className="text-white/85">{fmtPct(folderFadeSignals.donor.tailShareMedian, 1)}</strong>.
+                </p>
+                <p className="text-sm text-white/60">
+                  Но сама величина хвоста уже маленькая — поэтому «папочный» паттерн виден скорее как остаточная инерция, а не как основной драйвер.
+                </p>
+              </InsightCard>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.15 }}
+              className="mt-10 border border-white/10 rounded-xl p-5 md:p-6 bg-gradient-to-br from-white/[0.03] to-transparent"
+            >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                  <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Вердикт по форме кривой</div>
+                  <div className="text-lg md:text-2xl font-light">
+                    {folderFadeSignals.isFading ? (
+                      <span className="text-white/90">Эффект папки уже в основном исчерпан; дальше работает «свой» рост.</span>
+                    ) : (
+                      <span className="text-white/90">Хвост ещё заметен; эффект папки продолжается, но уже не доминирует.</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-white/60">
+                  Сумма хвоста: <strong className="text-white/80">+{Math.round(folderFadeSignals.tailSum)}</strong>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
