@@ -128,13 +128,13 @@ export function SummaryPage() {
       <main className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 space-y-12 md:space-y-16">
         {/* Title */}
         <section>
-          <p className="text-white/50 text-sm uppercase tracking-widest mb-2">
+          <p className="text-xs text-white/50 uppercase tracking-widest mb-2">
             Внутренний итог
           </p>
           <h2 className="text-3xl md:text-5xl font-light tracking-tight mb-4">
             Итог через 4 дня после запуска
           </h2>
-          <p className="text-white/60 text-sm md:text-base">
+          <p className="text-white/60 text-sm md:text-base leading-relaxed">
             Период: {REPORT_START_LABEL} → {SNAPSHOT_LABEL}
           </p>
         </section>
@@ -142,22 +142,22 @@ export function SummaryPage() {
         {/* Key metrics */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-white/20">
           <div className="bg-black p-6 md:p-8">
-            <div className="text-4xl md:text-5xl font-light mb-1">12</div>
-            <div className="text-xs md:text-sm text-white/60 uppercase tracking-wider">
+            <div className="text-4xl md:text-5xl font-light mb-2">12</div>
+            <div className="text-xs md:text-sm text-white/60 uppercase tracking-widest">
               Каналов
             </div>
           </div>
           <div className="bg-black p-6 md:p-8">
-            <div className="text-4xl md:text-5xl font-light mb-1">+{fmtInt(averageGrowth)}</div>
-            <div className="text-xs md:text-sm text-white/60 uppercase tracking-wider">
+            <div className="text-4xl md:text-5xl font-light mb-2">+{fmtInt(averageGrowth)}</div>
+            <div className="text-xs md:text-sm text-white/60 uppercase tracking-widest">
               Средний прирост на канал
             </div>
           </div>
           <div className="bg-black p-6 md:p-8">
-            <div className="text-4xl md:text-5xl font-light mb-1">
+            <div className="text-4xl md:text-5xl font-light mb-2">
               +{minTotal}…+{maxTotal}
             </div>
-            <div className="text-xs md:text-sm text-white/60 uppercase tracking-wider">
+            <div className="text-xs md:text-sm text-white/60 uppercase tracking-widest">
               Диапазон прироста
             </div>
           </div>
@@ -165,17 +165,17 @@ export function SummaryPage() {
 
         {/* Сколько принесло */}
         <section>
-          <h3 className="text-xl md:text-2xl font-light tracking-tight mb-4">
+          <h3 className="text-2xl md:text-3xl font-light tracking-tight mb-4">
             Сколько принесло подписчиков
           </h3>
-          <p className="text-white/80 mb-6 max-w-2xl">
+          <p className="text-white/80 mb-6 max-w-2xl leading-relaxed">
             За период наблюдения папка дала каждому каналу от <strong className="text-white">+{minTotal}</strong> до{' '}
             <strong className="text-white">+{maxTotal}</strong> подписчиков. Суммарный прирост по папке —{' '}
             <strong className="text-white">+{fmtInt(totalGrowth)}</strong>. Все 12 каналов попали в коридор{' '}
-            <strong className="text-white">+100…+132</strong> — папка сработала как механизм выравнивания.
+            <strong className="text-white">+{minTotal}…+{maxTotal}</strong> — папка сработала как механизм выравнивания.
           </p>
           <div className="border border-white/20 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 bg-white/5 text-xs text-white/50 uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-3 bg-white/5 text-xs text-white/50 uppercase tracking-widest">
               <span>Канал</span>
               <span className="text-right">Было</span>
               <span className="text-right">Прирост</span>
@@ -217,15 +217,15 @@ export function SummaryPage() {
 
         {/* Ожидания vs факт */}
         <section>
-          <h3 className="text-xl md:text-2xl font-light tracking-tight mb-4">
+          <h3 className="text-2xl md:text-3xl font-light tracking-tight mb-4">
             Ожидания vs факт
           </h3>
-          <p className="text-white/60 text-sm mb-6 max-w-2xl">
+          <p className="text-white/60 text-sm mb-6 max-w-2xl leading-relaxed">
             До запуска участники опроса в основном ориентировались на прирост до 50–100 подписчиков. Результат превзошёл ожидания: все 12 каналов получили прирост в зоне 100+.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border border-white/20 rounded-xl p-5 bg-white/[0.02]">
-              <div className="text-xs text-white/40 uppercase tracking-wider mb-4">
+              <div className="text-xs text-white/40 uppercase tracking-widest mb-4">
                 Ожидания (опрос)
               </div>
               <ul className="space-y-3">
@@ -247,7 +247,7 @@ export function SummaryPage() {
               </ul>
             </div>
             <div className="border border-white/20 rounded-xl p-5 bg-white/[0.02]">
-              <div className="text-xs text-white/40 uppercase tracking-wider mb-4">
+              <div className="text-xs text-white/40 uppercase tracking-widest mb-4">
                 Факт (по каналам)
               </div>
               <ul className="space-y-2 text-sm text-white/80">
@@ -265,7 +265,7 @@ export function SummaryPage() {
 
         {/* Лидеры роста */}
         <section>
-          <h3 className="text-xl md:text-2xl font-light tracking-tight mb-4">
+          <h3 className="text-2xl md:text-3xl font-light tracking-tight mb-4">
             Лидеры роста
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -294,11 +294,11 @@ export function SummaryPage() {
 
         {/* Финальный вывод (из conclusion.ts) */}
         <section className="border-t border-white/20 pt-10">
-          <h3 className="text-xl md:text-2xl font-light tracking-tight mb-6">
+          <h3 className="text-2xl md:text-3xl font-light tracking-tight mb-4">
             Финальный вывод
           </h3>
           <div className="border-l-4 border-white pl-6 md:pl-8 space-y-4">
-            <p className="text-lg md:text-xl text-white/90 leading-relaxed">
+            <p className="text-base md:text-lg text-white/90 leading-relaxed">
               {CONCLUSION.intro}
             </p>
             <ul className="space-y-2 text-white/80">

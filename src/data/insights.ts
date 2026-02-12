@@ -8,13 +8,13 @@ export interface InsightBlock {
   content: string;
 }
 
-export const INSIGHTS_GENERATED_AT: string | null = '2026-02-11T23:05:44.596Z';
+export const INSIGHTS_GENERATED_AT: string | null = '2026-02-12T00:11:28.464Z';
 
 export const INSIGHTS: InsightBlock[] = [
   {
     category: 'Высокий Overlap',
     title: 'ДОНОРЫ ЭКОСИСТЕМЫ',
-    content: '@DesignDictatorship (+48, +33, +27, итого +116), @kuntsevich_design (+42, +21, +34, итого +109), @dsgn_thinking (+43, +22, +31, итого +107). У них небольшой direct-рост, но они работают как доноры для других.',
+    content: '@DesignDictatorship (+48, +33, +27, итого +116), @kuntsevich_design (+42, +21, +34, итого +109), @dsgn_thinking (+43, +22, +31, итого +107). У них небольшой direct-прирост, но они работают как доноры для других.',
   },
   {
     category: 'Низкий Overlap',
@@ -24,21 +24,21 @@ export const INSIGHTS: InsightBlock[] = [
   {
     category: 'Ключевой инсайт',
     title: 'НИЗКИЙ ПРИРОСТ ≠ СЛАБЫЙ КАНАЛ',
-    content: '@kuntsevich_design (+42, +21, +34, итого +109) имеет низкий прирост в волне 2, что указывает на его интеграцию в ядро, а не слабость.',
+    content: '@kuntsevich_design (+42, +21, +34, итого +109) — низкий прирост во 2-й волне, но это свидетельствует о его интеграции в ядро, а не о слабости.',
   },
   {
     category: 'Структурная роль',
     title: 'ДОНОРСТВО ≠ ТАЙМИНГ',
-    content: 'Доноры @DesignDictatorship, @kuntsevich_design, @dsgn_thinking показывают, что их приросты по волнам не зависят от тайминга поста, а от насыщенности аудитории.',
+    content: '@DesignDictatorship (+48, +33, +27, итого +116) показывает, что их роль не зависит от тайминга поста, а от насыщенности аудитории.',
   },
   {
     category: 'Вторая и третья волны',
     title: 'ПОСТЕПЕННАЯ РАСПАКОВКА',
-    content: 'Диапазоны прироста: волна 2 +21…+76, волна 10 +25…+39. Основной прирост на 2–3 волне у @visuaaaals (+76), @yuliapohilko (+48). ',
+    content: 'Диапазоны прироста: волна 2 (+21…+76), волна 10 (+25…+39). Каналы с основным приростом на 2–3 волне: @yuliapohilko (+48), @tooltipp (+37), @lx_grzdv_links (+36).',
   },
   {
     category: 'Финальный эффект',
     title: 'ВЫРАВНИВАНИЕ ЭКОСИСТЕМЫ',
-    content: 'Фактический диапазон итого +100…+132. Каналы @tooltipp (+130) и @nix_ux_view (+121) вышли в близкий диапазон.',
+    content: 'Диапазон итого: +100…+132. Каналы вышли в близкий диапазон: @visuaaaals (+132), @tooltipp (+130).',
   }
 ];

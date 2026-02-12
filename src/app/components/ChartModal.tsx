@@ -89,7 +89,7 @@ export const ChartModal = memo(({
         <div className="border-b border-white/20 p-4 md:p-5 flex-shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-xs text-white/40 uppercase tracking-wider mb-1">График роста</div>
+              <div className="text-xs text-white/40 uppercase tracking-widest mb-1">График роста</div>
               <h3 className="text-xl md:text-3xl font-light tracking-tight mb-3 truncate">{channel}</h3>
               <div className="flex items-center gap-4 md:gap-6">
                 <div>
@@ -172,15 +172,15 @@ export const ChartModal = memo(({
         {/* Таблица — компактная, со скроллом */}
         <div className="border-t border-white/20 flex-1 min-h-0 flex flex-col">
           <div className="px-4 py-2 flex-shrink-0">
-            <span className="text-xs text-white/40 uppercase tracking-wider">Точки по времени</span>
+            <span className="text-xs text-white/40 uppercase tracking-widest">Точки по времени</span>
           </div>
           <div className="overflow-y-auto overflow-x-auto flex-1 min-h-0 max-h-[180px] px-4 pb-4 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-white/5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20 hover:[&::-webkit-scrollbar-thumb]:bg-white/30">
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-black z-10">
                 <tr className="border-b border-white/20">
-                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-wider">Дата и время</th>
-                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-wider text-right">Значение</th>
-                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-wider text-right">Прирост</th>
+                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-widest">Дата и время</th>
+                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-widest text-right">Значение</th>
+                  <th className="py-1.5 px-2 text-xs font-medium text-white/50 uppercase tracking-widest text-right">Прирост</th>
                 </tr>
               </thead>
               <tbody>

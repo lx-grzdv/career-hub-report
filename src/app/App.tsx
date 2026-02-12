@@ -34,6 +34,7 @@ import { CHANNEL_PROFILES } from '../data/channelProfiles';
 import { CONCLUSION, CONCLUSION_GENERATED_AT } from '../data/conclusion';
 import { SummaryPage } from './SummaryPage';
 import { ChartModal } from './components/ChartModal';
+import { GlossaryModal } from './components/GlossaryModal';
 
 // Performance optimizations for mobile
 const isMobile = typeof window !== 'undefined' 
@@ -270,8 +271,8 @@ const SliceScreenshotModal = memo(({
       >
         <div className="border-b border-white/20 p-4 md:p-6 flex items-center justify-between flex-shrink-0">
           <div>
-            <div className="text-xs text-white/40 uppercase tracking-wider">Срез данных</div>
-            <h3 className="text-lg md:text-xl font-light">{label} · Волна {waveNumber}</h3>
+            <div className="text-xs text-white/40 uppercase tracking-widest">Срез данных</div>
+            <h3 className="text-lg md:text-xl font-light tracking-tight">{label} · Волна {waveNumber}</h3>
           </div>
           <button
             type="button"
@@ -377,14 +378,10 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
             transition={{ duration: 0.3 }}
             className="border border-white/10 p-4 md:p-8 bg-gradient-to-br from-white/[0.02] to-transparent rounded-lg"
           >
-            <div className="mb-4 md:mb-6">
-              <h4 className="text-xl md:text-2xl font-light mb-2">Общий прирост по каналам</h4>
-              <p className="text-sm text-white/60 mb-2">
-                Цвет показывает пересечение аудитории: зелёный — новая аудитория (бенефициары), красный — общая аудитория (доноры)
-              </p>
+            <div className="mb-3 md:mb-4">
               {isMobile && (
-                <p className="text-xs text-white/40 flex items-center gap-1">
-                  <span>←</span> Прокрутите график вправо <span>→</span>
+                <p className="text-xs text-white/40 mb-2 flex items-center gap-1">
+                  <span>←</span> Прокрутите вправо <span>→</span>
                 </p>
               )}
             </div>
@@ -507,14 +504,10 @@ const ChartSection = ({ channelData, windowWidth }: { channelData: any[]; window
             transition={{ duration: 0.3 }}
             className="border border-white/20 p-4 md:p-8"
           >
-            <div className="mb-4 md:mb-6">
-              <h4 className="text-xl md:text-2xl font-light mb-2">Корреляция: Размер базы vs Прирост</h4>
-              <p className="text-sm text-white/60 mb-2">
-                Большие каналы с высоким overlap растут меньше (доноры), маленькие каналы с низким overlap растут больше (бенефициары)
-              </p>
+            <div className="mb-3 md:mb-4">
               {isMobile && (
-                <p className="text-xs text-white/40 flex items-center gap-1">
-                  <span>←</span> Прокрутите график вправо <span>→</span>
+                <p className="text-xs text-white/40 mb-2 flex items-center gap-1">
+                  <span>←</span> Прокрутите вправо <span>→</span>
                 </p>
               )}
             </div>
@@ -919,7 +912,7 @@ const InsightModal = ({
 
                     return (
                       <div key={section} className={wrapperClass}>
-                        <div className="text-[10px] md:text-xs text-white/40 uppercase tracking-[0.25em] mb-2">
+                        <div className="text-xs text-white/40 uppercase tracking-widest mb-2">
                           {titleLabel}
                         </div>
                         {bodyNode}
@@ -1106,6 +1099,8 @@ export default function App() {
   const [snapshotUploadError, setSnapshotUploadError] = useState<string | null>(null);
   const [uploadedSnapshotDataUrl, setUploadedSnapshotDataUrl] = useState<string | null>(null);
   const [sliceScreenshotModal, setSliceScreenshotModal] = useState<number | null>(null);
+  const [showGlossaryModal, setShowGlossaryModal] = useState(false);
+  const [showMoreInsights, setShowMoreInsights] = useState(false);
   
   // Track window resize for responsive charts
   useEffect(() => {
@@ -1282,7 +1277,8 @@ User-Agent: ${navigator.userAgent}
         i === 0 ? v - row.current : v - slices[i - 1]
       );
       const final = slices[slices.length - 1] ?? row.current;
-      const growth3 = growthToSlice[0] ?? 0;
+      /** Прирост в последнем срезе (волна N), для подписей и инсайтов. */
+      const growth3 = growthToSlice.length > 0 ? (growthToSlice[growthToSlice.length - 1] ?? 0) : 0;
       const total = (slices[slices.length - 1] ?? row.current) - row.base;
       return {
         ...row,
@@ -2088,24 +2084,46 @@ User-Agent: ${navigator.userAgent}
           initial={isMobile ? { opacity: 0 } : { y: -100 }}
           animate={isMobile ? { opacity: 1 } : { y: 0 }}
           transition={isMobile ? { duration: 0.3 } : { type: "spring", stiffness: 100, damping: 20 }}
-          className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/20"
+          className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-b border-white/15"
         >
-          <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 gap-3">
-            <h1 className="text-base md:text-xl tracking-[0.2em] font-light">
-              CAREER HUB
-            </h1>
-            <nav className="hidden lg:flex items-center gap-3 text-xs text-white/60 overflow-x-auto max-w-[55vw]">
-              <a href="/Result" className="hover:text-white transition-colors whitespace-nowrap text-white/80">Итог за 4 дня</a>
-              <a href="#data" className="hover:text-white transition-colors whitespace-nowrap">Лидеры</a>
-              <a href="#waves" className="hover:text-white transition-colors whitespace-nowrap">Волны</a>
-              <a href="#charts" className="hover:text-white transition-colors whitespace-nowrap">Графики</a>
-              <a href="#insights" className="hover:text-white transition-colors whitespace-nowrap">Инсайты</a>
-              <a href="#fading" className="hover:text-white transition-colors whitespace-nowrap">Эффект папки</a>
-              <a href="#table" className="hover:text-white transition-colors whitespace-nowrap">Таблица</a>
-              <a href="#glossary" className="hover:text-white transition-colors whitespace-nowrap">Глоссарий</a>
-              <a href="#conclusion" className="hover:text-white transition-colors whitespace-nowrap">Вывод</a>
+          <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 py-3 md:py-3.5 gap-4">
+            <a href="/" className="flex-shrink-0" aria-label="На главную">
+              <h1 className="text-sm md:text-base font-medium tracking-[0.2em] text-white uppercase">
+                CAREER HUB
+              </h1>
+            </a>
+            <nav className="hidden lg:flex items-center gap-1 flex-1 justify-center min-w-0 max-w-[50vw]">
+              <a href="/Result" className="px-2.5 py-1.5 rounded-md text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Итог за 4 дня
+              </a>
+              <span className="text-white/20 mx-0.5" aria-hidden>·</span>
+              <a href="#data" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Лидеры
+              </a>
+              <a href="#conclusion" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Вывод
+              </a>
+              <a href="#fading" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Эффект папки
+              </a>
+              <a href="#insights" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Инсайты
+              </a>
+              <a href="#waves" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Волны
+              </a>
+              <a href="#charts" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Графики
+              </a>
+              <a href="#table" className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap">
+                Таблица
+              </a>
+              <span className="text-white/20 mx-0.5" aria-hidden>·</span>
+              <button type="button" onClick={() => setShowGlossaryModal(true)} className="px-2.5 py-1.5 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap text-left">
+                Термины
+              </button>
             </nav>
-            <div className="flex items-center gap-2 md:gap-3 flex-wrap justify-end">
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
               <input
                 ref={snapshotFileInputRef}
                 type="file"
@@ -2114,58 +2132,56 @@ User-Agent: ${navigator.userAgent}
                 onChange={onSnapshotFileChange}
               />
 
-              <div className="hidden md:flex items-center gap-2 text-xs text-white/40">
+              <div className="hidden md:flex items-center gap-1.5 text-[11px] md:text-xs text-white/45 bg-white/5 rounded-lg px-2.5 py-1.5 border border-white/10">
                 <span className="whitespace-nowrap">Снапшот:</span>
-                <span className="text-white/60 whitespace-nowrap">{snapshotLabel}</span>
+                <span className="text-white/70 whitespace-nowrap">{snapshotLabel}</span>
                 {snapshotOverride && (
-                  <span className="text-amber-300/80 whitespace-nowrap">(из скрина)</span>
+                  <span className="text-amber-300/80 whitespace-nowrap">(скрин)</span>
                 )}
               </div>
 
               <a
                 href="/Result"
-                className="border border-white/25 px-3 md:px-4 py-1 text-xs md:text-sm rounded-full hover:bg-white/10 transition-all duration-300"
+                className="border border-white/20 px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 hover:border-white/30 transition-colors text-white/90"
               >
                 Итог за 4 дня
               </a>
               <motion.button
                 type="button"
                 onClick={openSnapshotPicker}
-                whileHover={!isMobile ? { scale: 1.04 } : undefined}
+                whileHover={!isMobile ? { scale: 1.02 } : undefined}
                 whileTap={{ scale: 0.98 }}
                 disabled={snapshotUploading}
-                className="border border-white/25 px-3 md:px-4 py-1 text-xs md:text-sm rounded-full hover:bg-white/10 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="border border-white/20 px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 hover:border-white/30 transition-colors text-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Загрузить новый скрин «Добавить папку» и пересчитать отчёт"
               >
-                {snapshotUploading ? 'Разбор…' : 'Обновить по скрину'}
+                {snapshotUploading ? 'Разбор…' : 'По скрину'}
               </motion.button>
 
               {snapshotOverride && (
                 <button
                   type="button"
                   onClick={resetSnapshotToDefault}
-                  className="text-xs md:text-sm text-white/50 hover:text-white/70 transition-colors px-2"
+                  className="text-xs text-white/50 hover:text-white/80 transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
                   title="Вернуться к данным из snapshot.ts"
                 >
                   Сбросить
                 </button>
               )}
 
-              {/* Open in Browser button for Telegram */}
               {typeof navigator !== 'undefined' && navigator.userAgent.includes('Telegram') && (
                 <button
                   onClick={() => {
-                    const url = window.location.href;
                     if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
                       window.location.href = `x-safari-https://${window.location.host}${window.location.pathname}`;
                     } else {
                       alert('Нажмите на ⋯ (три точки) в правом верхнем углу → "Открыть в браузере"');
                     }
                   }}
-                  className="border border-yellow-500/60 px-2 md:px-3 py-1 text-xs rounded-full bg-yellow-500/10 text-yellow-200 hover:bg-yellow-500/20 transition-all duration-300 flex items-center gap-1"
+                  className="border border-amber-500/50 px-2.5 py-1.5 text-xs rounded-lg bg-amber-500/10 text-amber-200/90 hover:bg-amber-500/20 transition-colors flex items-center gap-1"
                 >
-                  <span className="text-xs">🌐</span>
-                  <span className="hidden sm:inline">Открыть в браузере</span>
+                  <span>🌐</span>
+                  <span className="hidden sm:inline">В браузере</span>
                   <span className="sm:hidden">Браузер</span>
                 </button>
               )}
@@ -2174,9 +2190,9 @@ User-Agent: ${navigator.userAgent}
                 href="https://t.me/addlist/2VJJoel8MA5mNDgy" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                whileHover={!isMobile ? { scale: 1.05 } : undefined}
-                whileTap={{ scale: 0.95 }}
-                className="border border-white/40 px-3 md:px-4 py-1 text-xs md:text-sm rounded-full hover:bg-white hover:text-black transition-all duration-300"
+                whileHover={!isMobile ? { scale: 1.02 } : undefined}
+                whileTap={{ scale: 0.98 }}
+                className="border border-white/35 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 hover:bg-white hover:text-black transition-colors text-white"
               >
                 Добавить папку
               </motion.a>
@@ -2189,11 +2205,20 @@ User-Agent: ${navigator.userAgent}
 
         <main id="content">
         {/* Hero Section */}
-        <section ref={heroRef} className="min-h-screen flex flex-col border-b border-white/20 pt-16 md:pt-20 relative overflow-hidden scroll-mt-28">
-          <div className="flex-1 flex items-center px-4 md:px-12 lg:px-20">
+        <section ref={heroRef} className="min-h-screen flex flex-col border-b border-white/20 pt-16 md:pt-20 relative overflow-hidden scroll-mt-28 isolate">
+          {/* Фон: изображение папки с затемнением для читаемости текста */}
+          <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden>
+            <img
+              src={`${(import.meta.env.BASE_URL || '').replace(/\/$/, '')}/hero-folder.png`}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover object-right opacity-[0.22] md:opacity-[0.26]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/92 to-black/75 md:via-black/88 md:to-black/40" />
+          </div>
+          <div className="flex-1 flex flex-col justify-center px-4 md:px-12 lg:px-20 relative z-10">
             <motion.div
               style={!isMobile ? { y, opacity } : {}}
-              className="max-w-7xl w-full"
+              className="max-w-4xl w-full"
             >
               <h2 className="text-4xl md:text-8xl lg:text-9xl font-light leading-none tracking-tight mb-8 md:mb-16">
                 {isMobile || prefersReducedMotion ? (
@@ -2240,7 +2265,7 @@ User-Agent: ${navigator.userAgent}
             </motion.div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 border-t border-white/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 border-t border-white/20 relative z-10">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2268,7 +2293,7 @@ User-Agent: ${navigator.userAgent}
               whileHover={{ scale: 1.02 }}
             >
               <div className="text-center">
-                <div className="text-xl md:text-3xl mb-2">Листайте вниз</div>
+                <div className="text-xl md:text-3xl font-light tracking-tight mb-2">Листайте вниз</div>
                 <motion.div 
                   className="text-2xl md:text-4xl"
                   animate={{ y: [0, 10, 0] }}
@@ -2327,7 +2352,7 @@ User-Agent: ${navigator.userAgent}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-3xl md:text-7xl font-light mb-8 md:mb-16 tracking-tight"
+              className="text-4xl md:text-6xl font-light tracking-tight mb-8"
             >
               ЛИДЕРЫ РОСТА
             </motion.h3>
@@ -2357,9 +2382,9 @@ User-Agent: ${navigator.userAgent}
                   >
                     #{idx + 1}
                   </motion.div>
-                  <div className="text-2xl mb-6 tracking-wide"><ChannelLink channel={channel.channel} /></div>
+                  <div className="text-2xl mb-4 tracking-wide"><ChannelLink channel={channel.channel} /></div>
                   <motion.div 
-                    className="text-5xl font-light mb-6"
+                    className="text-5xl font-light mb-4"
                     whileHover={{ scale: 1.05 }}
                   >
                     +{fmtInt(channel.total)}
@@ -2380,257 +2405,37 @@ User-Agent: ${navigator.userAgent}
           </div>
         </section>
 
-        {/* Period blocks: таблица — слева периоды, справа лидеры и инсайты */}
-        <section className="border-b border-white/20 scroll-mt-28" id="waves">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse min-w-[640px]">
-              <thead>
-                <tr className="border-b border-white/20">
-                  <th className="text-left py-4 px-6 md:px-8 w-[1%] whitespace-nowrap text-[10px] md:text-xs font-medium text-white/50 uppercase tracking-[0.25em]">
-                    Период
-                  </th>
-                  <th className="text-left py-4 px-6 md:px-8 text-[10px] md:text-xs font-medium text-white/50 uppercase tracking-[0.25em]">
-                    Лидеры и инсайты
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {periodBlocks.map((block, idx) => (
-                  <motion.tr
-                    key={block.key}
-                    initial={{ opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="border-b border-white/10 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="py-6 md:py-8 px-6 md:px-8 align-top bg-black/40">
-                      <div className="sticky left-0">
-                        <div className="text-xl md:text-2xl font-light tracking-tight text-white uppercase">
-                          {block.title}
-                        </div>
-                        <div className="mt-1.5 text-sm text-white/50 font-mono">
-                          {block.timeRangeLabel}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-6 md:py-8 px-6 md:px-8 align-top">
-                      <div className="space-y-5">
-                        {block.categories.map((cat) => (
-                          <div key={cat.term}>
-                            <TermWithTooltip term={cat.term} definition={cat.definition} />
-                            <div className="text-base md:text-lg mt-1 text-white/90">{cat.line}</div>
-                          </div>
-                        ))}
-                        {block.insight && (
-                          <div className="pt-4 mt-4 border-t border-white/10">
-                            <div className="text-[10px] md:text-xs text-white/40 uppercase tracking-[0.2em] mb-1.5">
-                              Ключевой инсайт периода
-                            </div>
-                            <p className="text-sm md:text-[15px] text-white/80 leading-relaxed">{block.insight}</p>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Chart Section */}
-        <section className="border-b border-white/20 scroll-mt-28" id="charts">
+        {/* Conclusion — в начале для фокуса */}
+        <section className="border-b border-white/20 scroll-mt-28" id="conclusion">
           <div className="p-6 md:p-12 lg:p-20">
-            <motion.h3
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light mb-12 tracking-tight"
-            >
-              ВИЗУАЛИЗАЦИЯ ДАННЫХ
-            </motion.h3>
-
-            <div className="space-y-12">
-              {/* Legend */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="flex flex-wrap gap-6 items-center justify-center text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span className="text-white/80">Бенефициары</span>
-                  <span className="text-white/40">(низкий overlap)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-white/40"></div>
-                  <span className="text-white/80">Стабильные</span>
-                  <span className="text-white/40">(средний overlap)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full bg-red-500/60"></div>
-                  <span className="text-white/80">Доноры</span>
-                  <span className="text-white/40">(высокий overlap)</span>
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+              <motion.h3 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-4xl md:text-6xl font-light tracking-tight mb-8">
+                ФИНАЛЬНЫЙ ВЫВОД
+              </motion.h3>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="max-w-4xl">
+                <div className="border-l-4 border-white pl-6 md:pl-10 space-y-4">
+                  <p className="text-lg md:text-2xl font-light text-white leading-relaxed">
+                    {(snapshotOverride ? autoConclusion : CONCLUSION).intro}
+                  </p>
+                  <div className="space-y-2.5 text-base md:text-lg text-white/80">
+                    {(snapshotOverride ? autoConclusion : CONCLUSION).bullets.map((bullet, i) => (
+                      <p key={i} className="flex items-start gap-3">
+                        <span className="text-white/40 flex-shrink-0">→</span>
+                        <span dangerouslySetInnerHTML={{ __html: bullet.replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-white">$1</span>') }} />
+                      </p>
+                    ))}
+                  </div>
+                  <div className="pt-5 border-t border-white/20 mt-5">
+                    <p className="text-white/60 text-sm md:text-base leading-relaxed">{(snapshotOverride ? autoConclusion : CONCLUSION).closing}</p>
+                    {snapshotOverride ? (
+                      <p className="text-white/40 text-xs mt-2">Вывод по загруженному скриншоту. AI-версия: <code className="text-white/60">npm run generate-conclusion</code></p>
+                    ) : CONCLUSION_GENERATED_AT && (
+                      <p className="text-white/40 text-xs mt-2">Обновить вывод: <code className="text-white/60">npm run generate-conclusion</code></p>
+                    )}
+                  </div>
                 </div>
               </motion.div>
-
-              {/* Chart Switcher */}
-              <LazySection>
-                <ChartSection channelData={channelData} windowWidth={windowWidth} />
-              </LazySection>
-            </div>
-          </div>
-        </section>
-
-        {/* Insights */}
-        <section className="border-b border-white/20 scroll-mt-28" id="insights">
-          <div className="p-6 md:p-12 lg:p-20">
-            <motion.h3
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light tracking-tight mb-16"
-            >
-              КЛЮЧЕВЫЕ ИНСАЙТЫ
-            </motion.h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch">
-              {/* 1. Доноры экосистемы */}
-              <InsightCard
-                idx={0}
-                icon={Users}
-                meta="Высокий Overlap"
-                title="ДОНОРЫ ЭКОСИСТЕМЫ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  У каналов-доноров ({insightData.donors.map((d) => d.channel).join(', ')}) в волне {snapshotWaveNumber} прирост небольшой: {insightData.donorWave3Sample}.
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  <li>В той же волне сильнее выросли другие: {insightData.othersWave3Sample}</li>
-                  <li>Гипотеза: аудитория доноров насыщена «ядром», папка добирает менее пересекаемые каналы</li>
-                </ul>
-              </InsightCard>
-
-              {/* 2. Главные бенефициары */}
-              <InsightCard
-                idx={1}
-                icon={TrendingUp}
-                meta="Низкий Overlap"
-                title="ГЛАВНЫЕ БЕНЕФИЦИАРЫ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  Итоговый рост с {REPORT_START_LABEL} до {snapshotLabel} — кто сильнее всего добирал новую аудиторию:
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  {insightData.topByTotal.map((r) => (
-                    <li key={r.channel}><strong className="text-white/80">{r.channel} +{r.total}</strong></li>
-                  ))}
-                </ul>
-                <p className="text-sm text-white/60">
-                  Гипотеза: у этих каналов ниже пересечение с ядром и/или выше конверсия «витрины».
-                </p>
-              </InsightCard>
-
-              {/* 3. Низкий прирост ≠ слабый канал */}
-              <InsightCard
-                idx={2}
-                icon={Lightbulb}
-                meta="Ключевой инсайт"
-                title="НИЗКИЙ ПРИРОСТ ≠ СЛАБЫЙ КАНАЛ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  Рост сам по себе не измеряет «силу». Канал может быть сильным и расти меньше из-за насыщения аудитории.
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  <li>Ядро упирается в потолок быстрее: у доноров в волне {snapshotWaveNumber} прирост всего {insightData.donorWave3Sample}</li>
-                  <li>При этом папка продолжает «докармливать» другие каналы поздними волнами</li>
-                </ul>
-                <p className="text-sm text-white/60">Гипотеза: низкий прирост чаще означает высокий overlap, а не слабый контент.</p>
-              </InsightCard>
-
-              {/* 4. Донорство ≠ тайминг */}
-              <InsightCard
-                idx={3}
-                icon={Clock}
-                meta="Структурная роль"
-                title="ДОНОРСТВО ≠ ТАЙМИНГ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  «Донорский» эффект проявляется как перераспределение роста: у доноров малый прирост по волне {snapshotWaveNumber}, у других — до +{Math.max(...channelData.map((r) => r.growth3 ?? 0))} в том же срезе.
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
-                  <li>Гипотеза: донорство определяется насыщенностью аудитории (overlap), тайминг лишь запускает переток</li>
-                </ul>
-              </InsightCard>
-
-              {/* 5. Постепенная распаковка */}
-              <InsightCard
-                idx={4}
-                icon={PackageOpen}
-                meta="Вторая и третья волны"
-                title="ПОСТЕПЕННАЯ РАСПАКОВКА"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  У части каналов основная динамика пришлась не на первую волну, а на «хвост».
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  {insightData.wave2Leader && (
-                    <li><strong className="text-white/80">{insightData.wave2Leader.channel}</strong> — лидер волны 2 (+{insightData.wave2Leader.growth2})</li>
-                  )}
-                  <li>Диапазоны: волна 2 {insightData.wave2Range}, волна {snapshotWaveNumber} {insightData.wave3Range}</li>
-                </ul>
-                <p className="text-sm text-white/60">Гипотезы: задержка постинга, эффект «второго захода» аудитории, лучшая конверсия после просмотра витрины.</p>
-              </InsightCard>
-
-              {/* 6. Выравнивание экосистемы */}
-              <InsightCard
-                idx={5}
-                icon={Scale}
-                meta="Финальный эффект"
-                title="ВЫРАВНИВАНИЕ ЭКОСИСТЕМЫ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  К финалу периода экосистема «сошлась» в узкий коридор: примерно <strong className="text-white/80">+{insightData.totalRange}</strong> у большинства каналов.
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  <li>Верх: {insightData.topByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
-                  <li>Низ: {insightData.bottomByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
-                </ul>
-                <p className="text-sm text-white/60">Вывод: папка работает как механизм перераспределения и выравнивания.</p>
-              </InsightCard>
-
-              {/* 7. Два типа роста */}
-              <InsightCard
-                idx={6}
-                icon={GitBranch}
-                meta="Доп. инсайт"
-                title="ДВА ТИПА РОСТА: ИМПУЛЬС vs ХВОСТ"
-              >
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
-                  <li><strong className="text-white/80">Импульсные:</strong> крупная доля прироста в волне 1 (пример: каналы с growth1 &gt; 40)</li>
-                  <li><strong className="text-white/80">Хвостовые:</strong> основной прирост во 2–3 волне {insightData.wave2Leader ? `(${insightData.wave2Leader.channel} +${insightData.wave2Leader.growth2} во 2-й волне)` : ''}</li>
-                </ul>
-                <p className="text-sm text-white/60">Гипотеза: импульс зависит от «витрины», хвост — от постинга и возвращаемости аудитории.</p>
-              </InsightCard>
-
-              {/* 8. Кто получил в последнем срезе */}
-              <InsightCard
-                idx={7}
-                icon={Gift}
-                meta="Доп. инсайт"
-                title="КТО «ПОЛУЧИЛ» В ПОСЛЕДНЕМ СРЕЗЕ"
-              >
-                <p className="text-sm text-white/70 mb-3">
-                  В волне {snapshotWaveNumber} (15:30 → {snapshotTime}) максимальный прирост получили:
-                </p>
-                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
-                  <li><strong className="text-white/80">{insightData.wave3Leaders.map((r) => `${r.channel} +${r.growth3}`).join(', ')}</strong></li>
-                  <li>Гипотеза: это «карта пересечений» — кто ближе к ядру, тот меньше добирает в срезе; кто дальше — растёт сильнее</li>
-                </ul>
-              </InsightCard>
-            </div>
+            </motion.div>
           </div>
         </section>
 
@@ -2641,7 +2446,7 @@ User-Agent: ${navigator.userAgent}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light tracking-tight mb-6"
+              className="text-4xl md:text-6xl font-light tracking-tight mb-8"
             >
               ЭФФЕКТ ПАПКИ
             </motion.h3>
@@ -2651,7 +2456,7 @@ User-Agent: ${navigator.userAgent}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-white/60 mb-10 text-sm max-w-3xl"
+              className="text-white/60 mb-8 text-sm max-w-3xl"
             >
               Это не «истина», а чтение формы кривой роста. Мы видим только подписчиков по волнам (без источников и просмотров),
               поэтому ниже — сигналы, что папка уже дала основной импульс, а дальше рост чаще объясняется собственным постингом и инерцией.
@@ -2913,7 +2718,7 @@ User-Agent: ${navigator.userAgent}
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Вердикт по форме кривой</div>
+                  <div className="text-xs text-white/40 uppercase tracking-widest mb-1">Вердикт по форме кривой</div>
                   <div className="text-lg md:text-2xl font-light">
                     {folderFadeSignals.isFading ? (
                       <span className="text-white/90">Эффект папки уже в основном исчерпан; дальше работает «свой» рост.</span>
@@ -2930,6 +2735,265 @@ User-Agent: ${navigator.userAgent}
           </div>
         </section>
 
+        {/* Period blocks: таблица — слева периоды, справа лидеры и инсайты */}
+        <section className="border-b border-white/20 scroll-mt-28" id="waves">
+          <div className="p-6 md:p-12 lg:p-20 pb-0">
+            <motion.h3
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-6xl font-light tracking-tight mb-8"
+            >
+              ВОЛНЫ РОСТА
+            </motion.h3>
+          </div>
+          <div className="overflow-x-auto px-6 md:px-12 lg:px-20 pb-6 md:pb-12 lg:pb-20">
+            <table className="w-full border-collapse min-w-[640px]">
+              <thead>
+                <tr className="border-b border-white/20">
+                  <th className="text-left py-4 px-6 md:px-8 w-[1%] whitespace-nowrap text-xs md:text-sm font-medium text-white/50 uppercase tracking-widest">
+                    Период
+                  </th>
+                  <th className="text-left py-4 px-6 md:px-8 text-xs md:text-sm font-medium text-white/50 uppercase tracking-widest">
+                    Лидеры и инсайты
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {periodBlocks.map((block, idx) => (
+                  <motion.tr
+                    key={block.key}
+                    initial={{ opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="border-b border-white/10 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <td className="py-6 md:py-8 px-6 md:px-8 align-top bg-black/40">
+                      <div className="sticky left-0">
+                        <div className="text-xl md:text-2xl font-light tracking-tight text-white uppercase">
+                          {block.title}
+                        </div>
+                        <div className="mt-1.5 text-sm text-white/50 font-mono">
+                          {block.timeRangeLabel}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-6 md:py-8 px-6 md:px-8 align-top">
+                      <div className="space-y-5">
+                        {block.categories.map((cat) => (
+                          <div key={cat.term}>
+                            <TermWithTooltip term={cat.term} definition={cat.definition} />
+                            <div className="text-base md:text-lg mt-1 text-white/90">{cat.line}</div>
+                          </div>
+                        ))}
+                        {block.insight && (
+                          <div className="pt-4 mt-4 border-t border-white/10">
+                            <div className="text-xs text-white/40 uppercase tracking-widest mb-1.5">
+                              Ключевой инсайт периода
+                            </div>
+                            <p className="text-sm md:text-[15px] text-white/80 leading-relaxed">{block.insight}</p>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Charts: общий прирост по каналам */}
+        <section className="border-b border-white/20 scroll-mt-28" id="charts">
+          <div className="p-6 md:p-12 lg:p-20">
+            <motion.h3
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-6xl font-light tracking-tight mb-6"
+            >
+              Общий прирост по каналам
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-xs text-white/50 mb-6 flex flex-wrap items-center gap-x-4 gap-y-1"
+            >
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Бенефициары</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-white/50" /> Стабильные</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500/70" /> Доноры</span>
+            </motion.p>
+
+            <LazySection>
+              <ChartSection channelData={channelData} windowWidth={windowWidth} />
+            </LazySection>
+          </div>
+        </section>
+
+        {/* Insights */}
+        <section className="border-b border-white/20 scroll-mt-28" id="insights">
+          <div className="p-6 md:p-12 lg:p-20">
+            <motion.h3
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-6xl font-light tracking-tight mb-8"
+            >
+              КЛЮЧЕВЫЕ ИНСАЙТЫ
+            </motion.h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch">
+              {/* 1. Доноры экосистемы */}
+              <InsightCard
+                idx={0}
+                icon={Users}
+                meta="Высокий Overlap"
+                title="ДОНОРЫ ЭКОСИСТЕМЫ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  У каналов-доноров ({insightData.donors.map((d) => d.channel).join(', ')}) в волне {snapshotWaveNumber} прирост небольшой: {insightData.donorWave3Sample}.
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>В той же волне сильнее выросли другие: {insightData.othersWave3Sample}</li>
+                  <li>Гипотеза: аудитория доноров насыщена «ядром», папка добирает менее пересекаемые каналы</li>
+                </ul>
+              </InsightCard>
+
+              {/* 2. Главные бенефициары */}
+              <InsightCard
+                idx={1}
+                icon={TrendingUp}
+                meta="Низкий Overlap"
+                title="ГЛАВНЫЕ БЕНЕФИЦИАРЫ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Итоговый рост с {REPORT_START_LABEL} до {snapshotLabel} — кто сильнее всего добирал новую аудиторию:
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  {insightData.topByTotal.map((r) => (
+                    <li key={r.channel}><strong className="text-white/80">{r.channel} +{r.total}</strong></li>
+                  ))}
+                </ul>
+                <p className="text-sm text-white/60">
+                  Гипотеза: у этих каналов ниже пересечение с ядром и/или выше конверсия «витрины».
+                </p>
+              </InsightCard>
+
+              {/* 3. Низкий прирост ≠ слабый канал */}
+              <InsightCard
+                idx={2}
+                icon={Lightbulb}
+                meta="Ключевой инсайт"
+                title="НИЗКИЙ ПРИРОСТ ≠ СЛАБЫЙ КАНАЛ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  Рост сам по себе не измеряет «силу». Канал может быть сильным и расти меньше из-за насыщения аудитории.
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>Ядро упирается в потолок быстрее: у доноров в волне {snapshotWaveNumber} прирост всего {insightData.donorWave3Sample}</li>
+                  <li>При этом папка продолжает «докармливать» другие каналы поздними волнами</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотеза: низкий прирост чаще означает высокий overlap, а не слабый контент.</p>
+              </InsightCard>
+
+              {/* 4. Донорство ≠ тайминг */}
+              <InsightCard
+                idx={3}
+                icon={Clock}
+                meta="Структурная роль"
+                title="ДОНОРСТВО ≠ ТАЙМИНГ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  «Донорский» эффект проявляется как перераспределение роста: у доноров малый прирост по волне {snapshotWaveNumber}, у других — до +{Math.max(...channelData.map((r) => r.growth3 ?? 0))} в том же срезе.
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
+                  <li>Гипотеза: донорство определяется насыщенностью аудитории (overlap), тайминг лишь запускает переток</li>
+                </ul>
+              </InsightCard>
+            </div>
+
+            {!showMoreInsights ? (
+              <button
+                type="button"
+                onClick={() => setShowMoreInsights(true)}
+                className="mt-8 w-full py-4 border border-white/20 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm uppercase tracking-wider"
+              >
+                Показать ещё инсайты
+              </button>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-black items-stretch mt-8">
+              {/* 5. Постепенная распаковка */}
+              <InsightCard
+                idx={4}
+                icon={PackageOpen}
+                meta="Вторая и третья волны"
+                title="ПОСТЕПЕННАЯ РАСПАКОВКА"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  У части каналов основная динамика пришлась не на первую волну, а на «хвост».
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  {insightData.wave2Leader && (
+                    <li><strong className="text-white/80">{insightData.wave2Leader.channel}</strong> — лидер волны 2 (+{insightData.wave2Leader.growth2})</li>
+                  )}
+                  <li>Диапазоны: волна 2 {insightData.wave2Range}, волна {snapshotWaveNumber} {insightData.wave3Range}</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотезы: задержка постинга, эффект «второго захода» аудитории, лучшая конверсия после просмотра витрины.</p>
+              </InsightCard>
+
+              {/* 6. Выравнивание экосистемы */}
+              <InsightCard
+                idx={5}
+                icon={Scale}
+                meta="Финальный эффект"
+                title="ВЫРАВНИВАНИЕ ЭКОСИСТЕМЫ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  К финалу периода экосистема «сошлась» в узкий коридор: примерно <strong className="text-white/80">+{insightData.totalRange}</strong> у большинства каналов.
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li>Верх: {insightData.topByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
+                  <li>Низ: {insightData.bottomByTotal.map((r) => `${r.channel.replace('@', '')} +${r.total}`).join(', ')}</li>
+                </ul>
+                <p className="text-sm text-white/60">Вывод: папка работает как механизм перераспределения и выравнивания.</p>
+              </InsightCard>
+
+              {/* 7. Два типа роста */}
+              <InsightCard
+                idx={6}
+                icon={GitBranch}
+                meta="Доп. инсайт"
+                title="ДВА ТИПА РОСТА: ИМПУЛЬС vs ХВОСТ"
+              >
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1 mb-3">
+                  <li><strong className="text-white/80">Импульсные:</strong> крупная доля прироста в волне 1 (пример: каналы с growth1 &gt; 40)</li>
+                  <li><strong className="text-white/80">Хвостовые:</strong> основной прирост во 2–3 волне {insightData.wave2Leader ? `(${insightData.wave2Leader.channel} +${insightData.wave2Leader.growth2} во 2-й волне)` : ''}</li>
+                </ul>
+                <p className="text-sm text-white/60">Гипотеза: импульс зависит от «витрины», хвост — от постинга и возвращаемости аудитории.</p>
+              </InsightCard>
+
+              {/* 8. Кто получил в последнем срезе */}
+              <InsightCard
+                idx={7}
+                icon={Gift}
+                meta="Доп. инсайт"
+                title="КТО «ПОЛУЧИЛ» В ПОСЛЕДНЕМ СРЕЗЕ"
+              >
+                <p className="text-sm text-white/70 mb-3">
+                  В волне {snapshotWaveNumber} (15:30 → {snapshotTime}) максимальный прирост получили:
+                </p>
+                <ul className="text-sm text-white/60 list-disc pl-5 space-y-1">
+                  <li><strong className="text-white/80">{insightData.wave3Leaders.map((r) => `${r.channel} +${r.growth3}`).join(', ')}</strong></li>
+                  <li>Гипотеза: это «карта пересечений» — кто ближе к ядру, тот меньше добирает в срезе; кто дальше — растёт сильнее</li>
+                </ul>
+              </InsightCard>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Data Table */}
         <section className="border-b border-white/20 scroll-mt-28" id="table">
           <div className="p-6 md:p-12 lg:p-20">
@@ -2937,7 +3001,7 @@ User-Agent: ${navigator.userAgent}
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light mb-6 tracking-tight"
+              className="text-4xl md:text-6xl font-light tracking-tight mb-8"
             >
               ДЕТАЛЬНЫЕ ДАННЫЕ
             </motion.h3>
@@ -2960,7 +3024,7 @@ User-Agent: ${navigator.userAgent}
             <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">Поиск по каналу</span>
+                  <span className="text-xs uppercase tracking-widest text-white/40">Поиск по каналу</span>
                   <input
                     value={tableQuery}
                     onChange={(e) => setTableQuery(e.target.value)}
@@ -2969,7 +3033,7 @@ User-Agent: ${navigator.userAgent}
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">Тип</span>
+                  <span className="text-xs uppercase tracking-widest text-white/40">Тип</span>
                   <select
                     value={tableType}
                     onChange={(e) => setTableType(e.target.value as any)}
@@ -3012,7 +3076,7 @@ User-Agent: ${navigator.userAgent}
                       </button>
                     </th>
                     {tableValueColumns.map((col, i) => (
-                      <th key={i} className="text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20" title={col.valueKey === 'slice' && col.sliceIndex !== undefined ? effectiveSnapshots[col.sliceIndex]?.label : undefined}>
+                      <th key={i} className="text-right py-3 px-4 font-light text-sm bg-black/95 backdrop-blur border-b border-white/20" title={col.valueKey === 'slice' && col.sliceIndex !== undefined ? effectiveSnapshots[col.sliceIndex]?.label : undefined}>
                         {col.valueKey === 'slice' && col.sliceIndex !== undefined ? (
                           <button
                             type="button"
@@ -3028,7 +3092,7 @@ User-Agent: ${navigator.userAgent}
                         )}
                       </th>
                     ))}
-                    <th className="sticky right-0 z-20 text-right py-3 px-4 font-light bg-black/95 backdrop-blur border-b border-white/20 border-l border-white/20 shadow-[-4px_0_12px_rgba(0,0,0,0.4)]">
+                    <th className="sticky right-0 z-20 text-right py-3 px-4 font-light text-sm bg-black/95 backdrop-blur border-b border-white/20 border-l border-white/20 shadow-[-4px_0_12px_rgba(0,0,0,0.4)]">
                       <button type="button" onClick={() => toggleTableSort('total')} className="hover:text-white transition-colors w-full text-right">
                         Итого <span className="text-white/40 text-xs ml-1">{sortMark('total')}</span>
                       </button>
@@ -3084,237 +3148,28 @@ User-Agent: ${navigator.userAgent}
           )}
         </AnimatePresence>
 
-        {/* Glossary */}
-        <section className="border-b border-white/20 scroll-mt-28" id="glossary">
-          <div className="p-6 md:p-12 lg:p-20">
-            <motion.h3
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-light mb-12 tracking-tight"
-            >
-              ГЛОССАРИЙ
-            </motion.h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-black">
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна 1</div>
-                <p className="text-white/80">
-                  Первые 30 минут после запуска папки (11:00–11:30). Время максимального интереса и органического охвата у аудитории доноров.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.05 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна 2</div>
-                <p className="text-white/80">
-                  Период с 11:30 до 15:30. Вторичный охват через отложенные посты, пересылки и рекомендации алгоритма.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.07 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Волна {snapshotWaveNumber}</div>
-                <p className="text-white/80">
-                  Срез данных: период с 15:30 до момента снапшота ({snapshotLabel}). Новый скрин можно загрузить прямо в интерфейсе отчёта — данные и вычисляемые блоки пересчитаются автоматически.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Максимальный импульс</div>
-                <p className="text-white/80">
-                  Прирост +50 подписчиков в первой волне. Показатель очень высокой конверсии аудитории в первые минуты.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.15 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Сильный старт</div>
-                <p className="text-white/80">
-                  Прирост +45–48 подписчиков в первой волне. Хорошая начальная динамика с быстрой активацией аудитории.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Поздний старт</div>
-                <p className="text-white/80">
-                  Прирост +11–16 подписчиков в первой волне. Основной рост смещён во вторую волну из-за тайминга постов или специфики аудитории.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.25 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Overlap (пересечение)</div>
-                <p className="text-white/80">
-                  Доля аудитории, уже подписанной на несколько каналов из папки. Высокий overlap = меньше потенциала роста, низкий = больше новых подписчиков.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Доноры экосистемы</div>
-                <p className="text-white/80">
-                  Каналы с большой устоявшейся аудиторией, которые делятся трафиком с другими каналами папки больше, чем получают сами.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.35 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Бенефициары</div>
-                <p className="text-white/80">
-                  Каналы с низким пересечением аудитории, которые получают максимальный прирост от включения в папку за счёт привлечения новых читателей.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Абсолютный лидер</div>
-                <p className="text-white/80">
-                  Канал с максимальным приростом в конкретной волне. Показатель наивысшей эффективности в данном временном отрезке.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.45 }}
-                className="bg-black p-6 md:p-8"
-              >
-                <div className="text-xs text-white/40 mb-2 uppercase tracking-widest">Стабильная группа</div>
-                <p className="text-white/80">
-                  Каналы с равномерным приростом в обеих волнах (+30–40). Показывают предсказуемую динамику без резких скачков.
-                </p>
-              </motion.div>
-            </div>
-          </div>
-        </section>
-
-        {/* Conclusion */}
-        <section className="border-b border-white/20 scroll-mt-28" id="conclusion">
-          <div className="p-6 md:p-12 lg:p-20">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-            >
-              <motion.h3
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className="text-5xl md:text-7xl font-light mb-12 tracking-tight leading-tight"
-              >
-                ФИНАЛЬНЫЙ ВЫВОД
-              </motion.h3>
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                className="max-w-4xl"
-              >
-                <div className="border-l-4 border-white pl-8 md:pl-12 space-y-6">
-                  <p className="text-xl md:text-3xl font-light text-white leading-relaxed">
-                    {(snapshotOverride ? autoConclusion : CONCLUSION).intro}
-                  </p>
-                  <div className="space-y-4 text-lg md:text-xl text-white/80">
-                    {(snapshotOverride ? autoConclusion : CONCLUSION).bullets.map((bullet, i) => (
-                      <p key={i} className="flex items-start gap-4">
-                        <span className="text-white/40 flex-shrink-0">→</span>
-                        <span dangerouslySetInnerHTML={{ __html: bullet.replace(/\*\*(.+?)\*\*/g, '<span class="font-medium text-white">$1</span>') }} />
-                      </p>
-                    ))}
-                  </div>
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.5 }}
-                    className="pt-8 border-t border-white/20 mt-8"
-                  >
-                    <p className="text-white/60 text-sm md:text-base">
-                      {(snapshotOverride ? autoConclusion : CONCLUSION).closing}
-                    </p>
-                    {snapshotOverride ? (
-                      <p className="text-white/40 text-xs mt-3">
-                        Вывод сформирован автоматически по загруженному скриншоту (без OpenAI). Чтобы обновить AI-версию в коде: <code className="text-white/60">npm run generate-conclusion</code>
-                      </p>
-                    ) : CONCLUSION_GENERATED_AT && (
-                      <p className="text-white/40 text-xs mt-3">
-                        Вывод сгенерирован по данным от {new Date(CONCLUSION_GENERATED_AT).toLocaleString('ru-RU')}. Обновить: <code className="text-white/60">npm run generate-conclusion</code>
-                      </p>
-                    )}
-                  </motion.div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </section>
+        <AnimatePresence>
+          {showGlossaryModal && (
+            <GlossaryModal
+              onClose={() => setShowGlossaryModal(false)}
+              snapshotWaveNumber={snapshotWaveNumber}
+              snapshotLabel={snapshotLabel}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <footer className="p-6 md:p-12 lg:p-20">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
             <div>
-              <div className="text-3xl md:text-4xl font-light mb-4 tracking-wide">CAREER HUB</div>
-              <div className="text-white/60">Аналитический отчёт</div>
+              <div className="text-2xl md:text-3xl font-light tracking-tight mb-3">CAREER HUB</div>
+              <div className="text-sm text-white/60">Аналитический отчёт</div>
             </div>
             <div className="text-right">
-              <div className="text-white/60 mb-2">
+              <div className="text-sm text-white/60 mb-2">
                 Период отчёта: {REPORT_START_LABEL} – {snapshotLabel}
               </div>
-              <div className="text-white/60">
+              <div className="text-sm text-white/60">
                 Текущая дата: {new Date().toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </div>
               <div className="text-white/50 text-sm mt-2">
